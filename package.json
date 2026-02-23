@@ -1,0 +1,56 @@
+{
+  "name": "noteflow",
+  "version": "1.0.0",
+  "description": "A OneNote-like note-taking app for Mac with Google Drive sync",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "build": "vite build && electron-builder",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tiptap/extension-code-block-lowlight": "^2.6.0",
+    "@tiptap/extension-color": "^2.6.0",
+    "@tiptap/extension-highlight": "^2.6.0",
+    "@tiptap/extension-image": "^2.6.0",
+    "@tiptap/extension-placeholder": "^2.6.0",
+    "@tiptap/extension-task-item": "^2.6.0",
+    "@tiptap/extension-task-list": "^2.6.0",
+    "@tiptap/extension-text-align": "^2.6.0",
+    "@tiptap/extension-text-style": "^2.6.0",
+    "@tiptap/extension-underline": "^2.6.0",
+    "@tiptap/pm": "^2.6.0",
+    "@tiptap/react": "^2.6.0",
+    "@tiptap/starter-kit": "^2.6.0",
+    "lucide-react": "^0.575.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.0",
+    "concurrently": "^8.2.2",
+    "electron": "^28.2.0",
+    "electron-builder": "^24.13.0",
+    "vite": "^5.4.0",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.noteflow.app",
+    "productName": "NoteFlow",
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.productivity"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ]
+  }
+}
