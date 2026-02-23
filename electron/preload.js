@@ -1,6 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('noteflow', {
+contextBridge.exposeInMainWorld('librenote', {
     // Local storage
     listNotebooks: () => ipcRenderer.invoke('storage:list-notebooks'),
     saveNotebook: (notebook) => ipcRenderer.invoke('storage:save-notebook', notebook),

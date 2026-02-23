@@ -1450,3 +1450,352 @@ body {
 ::-webkit-scrollbar-track {
     background: transparent;
 }
+
+/* ══ FILE ACTION POPUP (Drive link click in editor) ══ */
+.file-action-popup {
+    position: absolute;
+    background: var(--bg-editor);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 200;
+    min-width: 240px;
+    max-width: 320px;
+    overflow: hidden;
+    animation: slideUp 0.15s ease;
+}
+
+.file-action-popup-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-default);
+    gap: 8px;
+}
+
+.file-action-popup-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+
+.file-action-popup-actions {
+    display: flex;
+    flex-direction: column;
+    padding: 4px;
+}
+
+/* ══ FILE ACTION BAR (Drive search results) ══ */
+.drive-search-item-wrapper {
+    border-bottom: 1px solid transparent;
+    transition: all var(--transition-fast);
+}
+
+.drive-search-item-wrapper.selected {
+    background: var(--bg-selected);
+    border-bottom: 1px solid var(--border-default);
+}
+
+.file-action-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 16px 8px;
+    border-top: 1px solid var(--border-default);
+    background: var(--bg-app);
+}
+
+.file-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    background: var(--bg-editor);
+    color: var(--text-primary);
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.file-action-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--onenote-purple);
+    color: var(--onenote-purple);
+}
+
+.file-action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.file-action-btn.insert-btn {
+    border-color: var(--onenote-purple);
+    color: var(--onenote-purple);
+}
+
+.file-action-btn.insert-btn:hover {
+    background: var(--onenote-purple-bg);
+}
+
+@keyframes spin-anim {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.spin-icon {
+    animation: spin-anim 1s linear infinite;
+}
+
+/* ══ CONFIRM DELETE MODAL ══ */
+.confirm-delete-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 400;
+    animation: fadeIn 0.15s ease;
+}
+
+.confirm-delete-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--bg-editor);
+    border-radius: var(--radius-lg);
+    padding: 0;
+    width: 400px;
+    max-width: 90vw;
+    box-shadow: var(--shadow-lg);
+    z-index: 401;
+    animation: slideUp 0.2s ease;
+    overflow: hidden;
+}
+
+.confirm-delete-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 16px 0 16px;
+}
+
+.confirm-delete-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #FDE7E8;
+    color: #D13438;
+}
+
+.confirm-delete-body {
+    padding: 12px 16px 0 16px;
+}
+
+.confirm-delete-body h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.confirm-delete-name {
+    font-size: 13px;
+    color: var(--onenote-purple);
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.confirm-delete-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 10px;
+}
+
+.confirm-delete-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+    background: #FFF8E1;
+    border: 1px solid #FFE082;
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+    font-size: 11px;
+    color: #8B6914;
+    line-height: 1.4;
+}
+
+[data-theme="dark"] .confirm-delete-warning {
+    background: #3A3520;
+    border-color: #6B5B1D;
+    color: #E0C860;
+}
+
+[data-theme="dark"] .confirm-delete-icon {
+    background: #3A1A1A;
+    color: #FF6B6B;
+}
+
+.confirm-delete-warning svg {
+    flex-shrink: 0;
+    margin-top: 1px;
+    color: #CA8A04;
+}
+
+.confirm-delete-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 16px;
+}
+
+.btn-secondary {
+    background: var(--bg-editor);
+    color: var(--text-primary);
+    border: 1px solid var(--border-strong);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.btn-secondary:hover {
+    background: var(--bg-hover);
+}
+
+.btn-danger {
+    background: #D13438;
+    color: white;
+    border: 1px solid #D13438;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.btn-danger:hover {
+    background: #A52A2D;
+    border-color: #A52A2D;
+}
+
+/* ══ DRAGGABLE IMAGE ══ */
+.draggable-image-wrapper {
+    display: inline-block;
+    position: relative;
+    margin: 6px 0;
+    cursor: grab;
+    border-radius: var(--radius-sm);
+    transition: box-shadow var(--transition-fast);
+    max-width: 100%;
+}
+
+.draggable-image-wrapper:hover {
+    box-shadow: 0 0 0 2px var(--onenote-purple);
+}
+
+.draggable-image-wrapper.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+}
+
+.draggable-image-handle {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 24px;
+    height: 24px;
+    border-radius: var(--radius-sm);
+    background: rgba(0, 0, 0, 0.55);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    cursor: grab;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+    z-index: 2;
+    user-select: none;
+    line-height: 1;
+}
+
+.draggable-image-wrapper:hover .draggable-image-handle {
+    opacity: 1;
+}
+
+.draggable-image {
+    display: block;
+    max-width: 100%;
+    border-radius: var(--radius-sm);
+    user-select: none;
+    pointer-events: none;
+}
+
+.draggable-image-resize {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 14px;
+    height: 14px;
+    background: var(--onenote-purple);
+    border-radius: 2px;
+    cursor: nwse-resize;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+    z-index: 2;
+}
+
+.draggable-image-resize::after {
+    content: '';
+    position: absolute;
+    bottom: 3px;
+    right: 3px;
+    width: 6px;
+    height: 6px;
+    border-right: 2px solid white;
+    border-bottom: 2px solid white;
+}
+
+.draggable-image-wrapper:hover .draggable-image-resize {
+    opacity: 1;
+}
+
+/* ══ EDITOR CLICK ANYWHERE CURSOR ══ */
+.editor-wrapper {
+    cursor: text;
+}
+
+.ProseMirror {
+    min-height: 100%;
+    cursor: text;
+}

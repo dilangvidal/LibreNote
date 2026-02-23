@@ -285,10 +285,20 @@ async function findOrCreateFolder(name) {
     return folder.id;
 }
 
+async function deleteDriveFile(fileId) {
+    try {
+        await driveRequest('DELETE', `/drive/v3/files/${fileId}`);
+        return { success: true };
+    } catch (err) {
+        return { success: false, error: err.message };
+    }
+}
+
 async function syncToGDrive(notebooks) {
     try {
         const folderId = await findOrCreateFolder('NoteFlow');
 
+        // Upload/update existing notebooks
         for (const nb of notebooks) {
             const fileName = `${nb.id}.json`;
             const content = JSON.stringify(nb, null, 2);
@@ -364,6 +374,20 @@ async function syncToGDrive(notebooks) {
                 });
             }
         }
+
+        // Delete remote notebooks that no longer exist locally
+        const localIds = new Set(notebooks.map(nb => `${nb.id}.json`));
+        const allQuery = `'${folderId}' in parents and trashed=false and mimeType='application/json'`;
+        const allRemote = await driveRequest('GET', `/drive/v3/files?q=${encodeURIComponent(allQuery)}&fields=files(id,name)`);
+        if (allRemote.files) {
+            for (const remoteFile of allRemote.files) {
+                if (!localIds.has(remoteFile.name)) {
+                    console.log(`[GDrive] Eliminando archivo remoto: ${remoteFile.name}`);
+                    await deleteDriveFile(remoteFile.id);
+                }
+            }
+        }
+
         return { success: true, count: notebooks.length };
     } catch (err) {
         return { success: false, error: err.message };
@@ -464,7 +488,7 @@ async function getFileUrl(fileId) {
 async function downloadDriveFile(fileId, fileName) {
     try {
         if (!tokens) throw new Error('No autenticado');
-        const downloadDir = path.join(app.getPath('home'), 'NoteFlowData', 'downloads');
+        const downloadDir = path.join(app.getPath('home'), 'LibreNoteData', 'downloads');
         if (!fs.existsSync(downloadDir)) fs.mkdirSync(downloadDir, { recursive: true });
 
         const filePath = path.join(downloadDir, fileName);
@@ -519,4 +543,5 @@ module.exports = {
     searchDriveFiles,
     getFileUrl,
     downloadDriveFile,
+    deleteDriveFile,
 };

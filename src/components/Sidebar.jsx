@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronRight, Plus, BookOpen, Trash2, Pencil, FolderPlus, Cloud, CloudOff, RefreshCw } from 'lucide-react';
+import ConfirmDeleteModal from './ConfirmDeleteModal.jsx';
 
 export default function Sidebar({
     collapsed, notebooks, activeNotebookId, activeSectionId,
@@ -11,6 +12,7 @@ export default function Sidebar({
     const [renamingId, setRenamingId] = useState(null);
     const [renameValue, setRenameValue] = useState('');
     const [ctx, setCtx] = useState(null);
+    const [deleteConfirm, setDeleteConfirm] = useState(null);
     const renameRef = useRef(null);
 
     useEffect(() => { if (renamingId && renameRef.current) { renameRef.current.focus(); renameRef.current.select(); } }, [renamingId]);
@@ -21,6 +23,19 @@ export default function Sidebar({
     function startRename(id, name, type) { setRenamingId(`${type}-${id}`); setRenameValue(name); setCtx(null); }
     function commitRename(type, nbId, secId) { if (renameValue.trim()) { if (type === 'notebook') onRenameNotebook(nbId, renameValue.trim()); else onRenameSection(nbId, secId, renameValue.trim()); } setRenamingId(null); }
     function handleCtx(e, type, nbId, secId) { e.preventDefault(); e.stopPropagation(); setCtx({ x: e.clientX, y: e.clientY, type, nbId, secId }); }
+
+    function requestDeleteNotebook(nbId) {
+        const nb = notebooks.find(n => n.id === nbId);
+        setDeleteConfirm({ type: 'notebook', name: nb?.name || 'Sin título', onConfirm: () => { onDeleteNotebook(nbId); setDeleteConfirm(null); } });
+        setCtx(null);
+    }
+
+    function requestDeleteSection(nbId, secId) {
+        const nb = notebooks.find(n => n.id === nbId);
+        const sec = nb?.sections.find(s => s.id === secId);
+        setDeleteConfirm({ type: 'section', name: sec?.name || 'Sin título', onConfirm: () => { onDeleteSection(nbId, secId); setDeleteConfirm(null); } });
+        setCtx(null);
+    }
 
     return (
         <aside className={`nav-panel ${collapsed ? 'collapsed' : ''}`}>
@@ -78,13 +93,22 @@ export default function Sidebar({
                     {ctx.type === 'notebook' && <>
                         <button className="context-menu-item" onClick={() => startRename(ctx.nbId, notebooks.find(n => n.id === ctx.nbId)?.name, 'notebook')}><Pencil size={12} /> Renombrar</button>
                         <button className="context-menu-item" onClick={() => { onAddSection(ctx.nbId); setCtx(null); }}><FolderPlus size={12} /> Nueva Sección</button>
-                        <button className="context-menu-item danger" onClick={() => { onDeleteNotebook(ctx.nbId); setCtx(null); }}><Trash2 size={12} /> Eliminar</button>
+                        <button className="context-menu-item danger" onClick={() => requestDeleteNotebook(ctx.nbId)}><Trash2 size={12} /> Eliminar</button>
                     </>}
                     {ctx.type === 'section' && <>
                         <button className="context-menu-item" onClick={() => { const nb = notebooks.find(n => n.id === ctx.nbId); const sec = nb?.sections.find(s => s.id === ctx.secId); startRename(ctx.secId, sec?.name, 'section'); }}><Pencil size={12} /> Renombrar</button>
-                        <button className="context-menu-item danger" onClick={() => { onDeleteSection(ctx.nbId, ctx.secId); setCtx(null); }}><Trash2 size={12} /> Eliminar</button>
+                        <button className="context-menu-item danger" onClick={() => requestDeleteSection(ctx.nbId, ctx.secId)}><Trash2 size={12} /> Eliminar</button>
                     </>}
                 </div>
+            )}
+            {deleteConfirm && (
+                <ConfirmDeleteModal
+                    type={deleteConfirm.type}
+                    name={deleteConfirm.name}
+                    gdriveConnected={gdriveConnected}
+                    onConfirm={deleteConfirm.onConfirm}
+                    onCancel={() => setDeleteConfirm(null)}
+                />
             )}
         </aside>
     );

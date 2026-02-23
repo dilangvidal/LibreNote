@@ -7,8 +7,8 @@ export default function RibbonBar({ editor, onOpenDriveSearch, gdriveConnected, 
     function cls(active) { return `ribbon-btn ${active ? 'active' : ''}`; }
 
     async function handleImageInsert() {
-        if (typeof window !== 'undefined' && window.noteflow?.pickImage) {
-            const result = await window.noteflow.pickImage();
+        if (typeof window !== 'undefined' && window.librenote?.pickImage) {
+            const result = await window.librenote.pickImage();
             if (result?.dataUrl) {
                 editor.chain().focus().setImage({ src: result.dataUrl }).run();
                 // Upload to Drive if connected
@@ -34,8 +34,8 @@ export default function RibbonBar({ editor, onOpenDriveSearch, gdriveConnected, 
     }
 
     async function handleFileAttach() {
-        if (typeof window !== 'undefined' && window.noteflow?.pickFile) {
-            const result = await window.noteflow.pickFile('All Files');
+        if (typeof window !== 'undefined' && window.librenote?.pickFile) {
+            const result = await window.librenote.pickFile('All Files');
             if (result) {
                 if (gdriveConnected && api?.gdriveUploadFile) {
                     const uploadResult = await api.gdriveUploadFile(result.path, result.name);

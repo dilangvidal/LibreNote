@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { initGDrive, handleGDriveAuth, syncToGDrive, syncFromGDrive, isAuthenticated, logout, uploadFileToDrive, searchDriveFiles, getFileUrl, downloadDriveFile } = require('./gdrive');
 
-const DATA_DIR = path.join(app.getPath('home'), 'NoteFlowData', 'notebooks');
+const DATA_DIR = path.join(app.getPath('home'), 'LibreNoteData', 'notebooks');
 
 function ensureDataDir() {
     if (!fs.existsSync(DATA_DIR)) {

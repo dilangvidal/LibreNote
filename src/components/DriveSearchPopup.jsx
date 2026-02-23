@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, FileText, File, FileSpreadsheet, Image, FileVideo, X } from 'lucide-react';
+import { Search, FileText, File, FileSpreadsheet, Image, FileVideo, X, Download, ExternalLink, Loader2 } from 'lucide-react';
 
 function getFileIcon(mimeType) {
     if (!mimeType) return <File size={16} />;
@@ -14,6 +14,8 @@ export default function DriveSearchPopup({ api, onInsert, onClose }) {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [downloading, setDownloading] = useState(false);
     const inputRef = useRef(null);
     const searchTimeoutRef = useRef(null);
 
@@ -21,6 +23,7 @@ export default function DriveSearchPopup({ api, onInsert, onClose }) {
 
     function handleSearch(val) {
         setQuery(val);
+        setSelectedFile(null);
         if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
         if (!val.trim()) { setResults([]); return; }
         searchTimeoutRef.current = setTimeout(async () => {
@@ -37,6 +40,41 @@ export default function DriveSearchPopup({ api, onInsert, onClose }) {
     function formatDate(d) {
         if (!d) return '';
         return new Date(d).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    function handleFileClick(file) {
+        setSelectedFile(selectedFile?.id === file.id ? null : file);
+    }
+
+    async function handleDownloadLocal(file) {
+        if (!file || downloading) return;
+        setDownloading(true);
+        try {
+            const driveMatch = (file.webViewLink || '').match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/);
+            const fileId = driveMatch ? driveMatch[1] : file.id;
+            if (fileId && api?.gdriveDownloadFile) {
+                const result = await api.gdriveDownloadFile(fileId, file.name);
+                if (result?.success && result.path && api?.openLocalFile) {
+                    await api.openLocalFile(result.path);
+                }
+            }
+            // Also insert the file as a link in the page
+            if (onInsert) onInsert(file);
+        } catch (err) {
+            console.error('[DriveSearch] Error descargando:', err);
+        }
+        setDownloading(false);
+    }
+
+    function handleViewOnline(file) {
+        if (!file) return;
+        const link = file.webViewLink || file.webContentLink || '#';
+        window.open(link, '_blank');
+        onClose();
+    }
+
+    function handleInsertLink(file) {
+        if (onInsert) onInsert(file);
     }
 
     return (
@@ -60,11 +98,29 @@ export default function DriveSearchPopup({ api, onInsert, onClose }) {
                     {!loading && results.length === 0 && query.trim() && <div className="drive-search-empty">No se encontraron archivos</div>}
                     {!loading && results.length === 0 && !query.trim() && <div className="drive-search-empty">Escribe para buscar en tu Google Drive</div>}
                     {results.map(file => (
-                        <button key={file.id} className="drive-search-item" onClick={() => onInsert(file)}>
-                            {getFileIcon(file.mimeType)}
-                            <div className="drive-search-item-name">{file.name}</div>
-                            <div className="drive-search-item-meta">{formatDate(file.modifiedTime)}</div>
-                        </button>
+                        <div key={file.id} className={`drive-search-item-wrapper ${selectedFile?.id === file.id ? 'selected' : ''}`}>
+                            <button className="drive-search-item" onClick={() => handleFileClick(file)}>
+                                {getFileIcon(file.mimeType)}
+                                <div className="drive-search-item-name">{file.name}</div>
+                                <div className="drive-search-item-meta">{formatDate(file.modifiedTime)}</div>
+                            </button>
+                            {selectedFile?.id === file.id && (
+                                <div className="file-action-bar">
+                                    <button className="file-action-btn" onClick={() => handleDownloadLocal(file)} disabled={downloading}>
+                                        {downloading ? <Loader2 size={14} className="spin-icon" /> : <Download size={14} />}
+                                        <span>{downloading ? 'Descargando...' : 'Abrir local'}</span>
+                                    </button>
+                                    <button className="file-action-btn" onClick={() => handleViewOnline(file)}>
+                                        <ExternalLink size={14} />
+                                        <span>Ver en línea</span>
+                                    </button>
+                                    <button className="file-action-btn insert-btn" onClick={() => handleInsertLink(file)}>
+                                        <FileText size={14} />
+                                        <span>Insertar enlace</span>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     ))}
                 </div>
             </div>

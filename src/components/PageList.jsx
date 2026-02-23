@@ -1,13 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, FileText } from 'lucide-react';
+import ConfirmDeleteModal from './ConfirmDeleteModal.jsx';
 
-export default function PageList({ collapsed, section, activePageId, onSelectPage, onAddPage, onDeletePage }) {
+export default function PageList({ collapsed, section, activePageId, onSelectPage, onAddPage, onDeletePage, gdriveConnected }) {
     const [ctx, setCtx] = useState(null);
+    const [deleteConfirm, setDeleteConfirm] = useState(null);
 
     useEffect(() => { if (ctx) { const fn = () => setCtx(null); document.addEventListener('click', fn); return () => document.removeEventListener('click', fn); } }, [ctx]);
 
     function formatDate(d) { if (!d) return ''; return new Date(d).toLocaleDateString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
     function getPreview(c) { if (!c) return 'Página vacía'; const t = c.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(); return t.length > 60 ? t.substring(0, 60) + '...' : t || 'Página vacía'; }
+
+    function requestDeletePage(pageId) {
+        const page = section?.pages.find(p => p.id === pageId);
+        setDeleteConfirm({
+            type: 'page',
+            name: page?.title || 'Sin título',
+            onConfirm: () => { onDeletePage(pageId); setDeleteConfirm(null); },
+        });
+        setCtx(null);
+    }
 
     if (!section) {
         return (
@@ -38,8 +50,17 @@ export default function PageList({ collapsed, section, activePageId, onSelectPag
             </div>
             {ctx && (
                 <div className="context-menu" style={{ left: ctx.x, top: ctx.y }}>
-                    <button className="context-menu-item danger" onClick={() => { onDeletePage(ctx.pageId); setCtx(null); }}><Trash2 size={12} /> Eliminar página</button>
+                    <button className="context-menu-item danger" onClick={() => requestDeletePage(ctx.pageId)}><Trash2 size={12} /> Eliminar página</button>
                 </div>
+            )}
+            {deleteConfirm && (
+                <ConfirmDeleteModal
+                    type={deleteConfirm.type}
+                    name={deleteConfirm.name}
+                    gdriveConnected={gdriveConnected}
+                    onConfirm={deleteConfirm.onConfirm}
+                    onCancel={() => setDeleteConfirm(null)}
+                />
             )}
         </div>
     );

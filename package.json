@@ -1,6 +1,6 @@
 {
-  "name": "noteflow",
-  "version": "1.0.0",
+  "name": "librenote",
+  "version": "3.0.0",
   "description": "A OneNote-like note-taking app for Mac with Google Drive sync",
   "main": "electron/main.js",
   "scripts": {
@@ -13,6 +13,7 @@
     "@tiptap/extension-color": "^2.6.0",
     "@tiptap/extension-highlight": "^2.6.0",
     "@tiptap/extension-image": "^2.6.0",
+    "@tiptap/extension-link": "^2.27.2",
     "@tiptap/extension-placeholder": "^2.6.0",
     "@tiptap/extension-task-item": "^2.6.0",
     "@tiptap/extension-task-list": "^2.6.0",
@@ -35,8 +36,8 @@
     "wait-on": "^7.2.0"
   },
   "build": {
-    "appId": "com.noteflow.app",
-    "productName": "NoteFlow",
+    "appId": "com.librenote.app",
+    "productName": "LibreNote",
     "mac": {
       "target": [
         {

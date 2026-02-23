@@ -51,7 +51,7 @@ export default function App() {
                 <button className="titlebar-btn" onClick={() => layout.setNavCollapsed(!layout.navCollapsed)} style={{ WebkitAppRegion: 'no-drag' }}>
                     <Menu size={16} />
                 </button>
-                <span className="titlebar-title">NoteFlow</span>
+                <span className="titlebar-title">LibreNote</span>
                 <div className="titlebar-search">
                     <Search size={14} />
                     <input placeholder="Buscar en los notebooks..." value={searchQuery} onChange={e => handleSearch(e.target.value)} />
@@ -102,6 +102,7 @@ export default function App() {
                     onAddPage={() => { if (nb.activeNotebookId && nb.activeSectionId) nb.addPage(nb.activeNotebookId, nb.activeSectionId); }}
                     onDeletePage={pid => { if (nb.activeNotebookId && nb.activeSectionId) nb.deletePage(nb.activeNotebookId, nb.activeSectionId, pid); }}
                     onToggle={() => layout.setPageListCollapsed(!layout.pageListCollapsed)}
+                    gdriveConnected={gdrive.gdriveConnected}
                 />
                 <EditorArea page={nb.activePage} onTitleChange={nb.updatePageTitle} onContentChange={nb.updatePageContent}
                     onEditorReady={e => setEditorRef(e)} syncStatus={gdrive.syncStatus}
