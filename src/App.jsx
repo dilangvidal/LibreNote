@@ -5,6 +5,7 @@ import EditorArea from './components/EditorArea.jsx';
 import RibbonBar from './components/RibbonBar.jsx';
 import SettingsModal from './components/SettingsModal.jsx';
 import DriveSearchPopup from './components/DriveSearchPopup.jsx';
+import ExportPdfModal from './components/ExportPdfModal.jsx';
 import useNotebooks from './hooks/useNotebooks.js';
 import useGDriveSync from './hooks/useGDriveSync.js';
 import useResponsiveLayout from './hooks/useResponsiveLayout.js';
@@ -18,6 +19,7 @@ export default function App() {
 
     const [showSettings, setShowSettings] = useState(false);
     const [showDriveSearch, setShowDriveSearch] = useState(false);
+    const [showExportPdf, setShowExportPdf] = useState(false);
     const [editorRef, setEditorRef] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
@@ -83,7 +85,7 @@ export default function App() {
                 </>
             )}
 
-            <RibbonBar editor={editorRef} onOpenDriveSearch={() => setShowDriveSearch(true)} gdriveConnected={gdrive.gdriveConnected} api={api} />
+            <RibbonBar editor={editorRef} onOpenDriveSearch={() => setShowDriveSearch(true)} onOpenExportPdf={() => setShowExportPdf(true)} gdriveConnected={gdrive.gdriveConnected} api={api} />
 
             <div className="main-area">
                 {!layout.navCollapsed && window.innerWidth <= 768 && (
@@ -116,6 +118,13 @@ export default function App() {
 
             {showSettings && <SettingsModal gdriveConnected={gdrive.gdriveConnected} onConnect={gdrive.handleGDriveConnect} onDisconnect={gdrive.handleGDriveDisconnect} onClose={() => setShowSettings(false)} />}
             {showDriveSearch && <DriveSearchPopup api={api} onInsert={handleDriveFileInsert} onClose={() => setShowDriveSearch(false)} />}
+            {showExportPdf && <ExportPdfModal
+                notebooks={nb.notebooks}
+                activeNotebookId={nb.activeNotebookId}
+                activeSectionId={nb.activeSectionId}
+                activePageId={nb.activePageId}
+                onClose={() => setShowExportPdf(false)}
+            />}
         </div>
     );
 }

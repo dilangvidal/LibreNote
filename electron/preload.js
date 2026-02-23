@@ -28,4 +28,7 @@ contextBridge.exposeInMainWorld('librenote', {
 
     // Gemini AI
     geminiChat: (prompt, pageContext, selectedText) => ipcRenderer.invoke('gemini:chat', prompt, pageContext, selectedText),
+
+    // Export
+    exportPdf: (htmlContent, suggestedName) => ipcRenderer.invoke('export:pdf', htmlContent, suggestedName),
 });

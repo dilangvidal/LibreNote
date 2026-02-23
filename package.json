@@ -1,6 +1,6 @@
 {
   "name": "librenote",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "description": "A OneNote-like note-taking app for Mac with Google Drive sync",
   "main": "electron/main.js",
   "scripts": {

@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { Bold, Italic, Underline, Strikethrough, Highlighter, List, ListOrdered, CheckSquare, AlignLeft, AlignCenter, AlignRight, Quote, Code, Minus, Undo2, Redo2, Image, Paperclip, Search, Clipboard, Scissors, Copy, RemoveFormatting, Table2, Plus, Trash2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Merge, Split, Trash, Columns, Rows } from 'lucide-react';
+import { Bold, Italic, Underline, Strikethrough, Highlighter, List, ListOrdered, CheckSquare, AlignLeft, AlignCenter, AlignRight, Quote, Code, Minus, Undo2, Redo2, Image, Paperclip, Search, Clipboard, Scissors, Copy, RemoveFormatting, Table2, Plus, Trash2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Merge, Split, Trash, Columns, Rows, FileDown } from 'lucide-react';
 
-export default function RibbonBar({ editor, onOpenDriveSearch, gdriveConnected, api }) {
+export default function RibbonBar({ editor, onOpenDriveSearch, onOpenExportPdf, gdriveConnected, api }) {
     const [activeTab, setActiveTab] = useState('home');
     const [showTablePicker, setShowTablePicker] = useState(false);
     const [hoverRows, setHoverRows] = useState(0);
@@ -245,6 +245,9 @@ export default function RibbonBar({ editor, onOpenDriveSearch, gdriveConnected, 
                                 <button className="ribbon-btn" onClick={onOpenDriveSearch} title="Buscar en Drive"><Search size={15} /><span className="label">Buscar en Drive</span></button>
                             </div>
                         )}
+                        <div className="ribbon-group">
+                            <button className="ribbon-btn" onClick={onOpenExportPdf} title="Exportar a PDF"><FileDown size={15} /><span className="label">Exportar PDF</span></button>
+                        </div>
                     </>
                 )}
 

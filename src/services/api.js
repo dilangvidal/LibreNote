@@ -57,6 +57,32 @@ const browserStorage = {
     pickImage: async () => null,
     pickFile: async () => null,
     openLocalFile: async () => false,
+
+    // Export
+    exportPdf: async (htmlContent, suggestedName) => {
+        // Browser fallback: open styled HTML in a new window and trigger print
+        const printWin = window.open('', '_blank', 'width=800,height=600');
+        if (!printWin) return { success: false, error: 'No se pudo abrir la ventana de impresión' };
+        printWin.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${suggestedName || 'Exportación'}</title>
+<style>
+body { font-family: 'Segoe UI', -apple-system, sans-serif; padding: 40px; color: #323130; font-size: 13px; line-height: 1.6; }
+h1 { font-size: 24px; font-weight: 600; margin: 20px 0 8px; border-bottom: 2px solid #7719AA; padding-bottom: 6px; }
+h2 { font-size: 18px; font-weight: 600; color: #7719AA; margin: 16px 0 6px; }
+h3 { font-size: 15px; font-weight: 600; color: #605E5C; margin: 12px 0 4px; }
+h4 { font-size: 13px; font-weight: 600; margin: 10px 0 4px; }
+p { margin: 4px 0; } ul, ol { padding-left: 1.5em; } li { margin: 2px 0; }
+blockquote { border-left: 3px solid #7719AA; padding-left: 12px; color: #605E5C; }
+table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+th, td { border: 1px solid #D2D0CE; padding: 6px 10px; text-align: left; }
+th { background: #F3ECFA; font-weight: 600; }
+img { max-width: 100%; } .page-break { page-break-before: always; }
+.section-header { background: #F3ECFA; padding: 8px 16px; margin: 16px 0 8px; border-radius: 4px; }
+.page-title { color: #7719AA; font-size: 18px; font-weight: 300; margin: 12px 0 6px; border-bottom: 1px solid #EDEBE9; padding-bottom: 4px; }
+</style></head><body>${htmlContent}</body></html>`);
+        printWin.document.close();
+        setTimeout(() => { printWin.print(); }, 300);
+        return { success: true };
+    },
 };
 
 const api = isElectron ? window.librenote : browserStorage;

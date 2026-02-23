@@ -2672,3 +2672,182 @@ body {
 .table-drop-after {
     border-bottom: 2px solid var(--onenote-purple);
 }
+
+/* ══ EXPORT PDF MODAL ══ */
+.export-pdf-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--bg-editor);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    width: 440px;
+    max-width: 90vw;
+    box-shadow: var(--shadow-lg);
+    z-index: 301;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.export-pdf-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-default);
+    color: var(--onenote-purple);
+}
+
+.export-pdf-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.export-pdf-body {
+    padding: 16px;
+}
+
+.export-scope-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+}
+
+.export-scope-options {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.export-scope-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--bg-sidebar);
+    border: 2px solid transparent;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    text-align: left;
+    transition: all var(--transition-fast);
+    font-family: inherit;
+    color: var(--text-primary);
+}
+
+.export-scope-btn:hover:not(:disabled) {
+    background: var(--bg-hover);
+    border-color: var(--border-strong);
+}
+
+.export-scope-btn.selected {
+    border-color: var(--onenote-purple);
+    background: var(--onenote-purple-bg);
+}
+
+.export-scope-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.export-scope-btn svg {
+    color: var(--onenote-purple);
+    flex-shrink: 0;
+}
+
+.export-scope-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.export-scope-name {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.export-scope-detail {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.export-result {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    margin-top: 12px;
+}
+
+.export-result.success {
+    background: #EBF5EB;
+    color: #107C10;
+}
+
+.export-result.error {
+    background: #FDE7E9;
+    color: #D13438;
+}
+
+[data-theme="dark"] .export-result.success {
+    background: #1A3A1A;
+    color: #6CC06C;
+}
+
+[data-theme="dark"] .export-result.error {
+    background: #3A1A1A;
+    color: #FF6B6B;
+}
+
+.export-pdf-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border-default);
+}
+
+.export-pdf-footer .btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    border: 1px solid var(--border-default);
+    transition: all var(--transition-fast);
+}
+
+.export-pdf-footer .btn-ghost {
+    background: none;
+    color: var(--text-secondary);
+}
+
+.export-pdf-footer .btn-ghost:hover {
+    background: var(--bg-hover);
+}
+
+.export-pdf-footer .btn-primary {
+    background: var(--onenote-purple);
+    color: white;
+    border-color: var(--onenote-purple);
+}
+
+.export-pdf-footer .btn-primary:hover {
+    background: var(--onenote-purple-dark);
+}
+
+.export-pdf-footer .btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}

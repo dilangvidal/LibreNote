@@ -327,6 +327,81 @@ Devuelve tu respuesta en HTML listo para insertar en el editor (usa <p>, <strong
     }
 });
 
+// ── IPC: Export to PDF ──
+ipcMain.handle('export:pdf', async (_event, htmlContent, suggestedName) => {
+    try {
+        const saveResult = await dialog.showSaveDialog(mainWindow, {
+            title: 'Exportar como PDF',
+            defaultPath: path.join(app.getPath('documents'), `${suggestedName || 'exportacion'}.pdf`),
+            filters: [{ name: 'PDF', extensions: ['pdf'] }],
+        });
+
+        if (saveResult.canceled || !saveResult.filePath) {
+            return { success: false, canceled: true };
+        }
+
+        // Create a hidden window to render the HTML and convert to PDF
+        const pdfWin = new BrowserWindow({
+            width: 800,
+            height: 600,
+            show: false,
+            webPreferences: { nodeIntegration: false, contextIsolation: true },
+        });
+
+        const styledHtml = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+body { font-family: 'Segoe UI', -apple-system, sans-serif; padding: 40px; color: #323130; font-size: 13px; line-height: 1.6; }
+h1 { font-size: 24px; font-weight: 600; margin: 20px 0 8px; border-bottom: 2px solid #7719AA; padding-bottom: 6px; }
+h2 { font-size: 18px; font-weight: 600; color: #7719AA; margin: 16px 0 6px; }
+h3 { font-size: 15px; font-weight: 600; color: #605E5C; margin: 12px 0 4px; }
+h4 { font-size: 13px; font-weight: 600; margin: 10px 0 4px; }
+p { margin: 4px 0; }
+ul, ol { padding-left: 1.5em; margin: 4px 0; }
+li { margin: 2px 0; }
+blockquote { border-left: 3px solid #7719AA; padding-left: 12px; color: #605E5C; margin: 8px 0; }
+code { background: #F4F4F4; border-radius: 3px; padding: 1px 4px; font-size: 0.9em; font-family: Consolas, Monaco, monospace; }
+pre { background: #F4F4F4; border-radius: 6px; padding: 12px 16px; font-family: Consolas, Monaco, monospace; font-size: 12px; border: 1px solid #EDEBE9; overflow-x: auto; }
+pre code { background: none; padding: 0; }
+table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+th, td { border: 1px solid #D2D0CE; padding: 6px 10px; text-align: left; font-size: 12px; }
+th { background: #F3ECFA; font-weight: 600; }
+img { max-width: 100%; height: auto; }
+mark { background: #FFF3CD; padding: 1px 2px; }
+a { color: #4A8FDD; text-decoration: underline; }
+hr { border: none; border-top: 1px solid #EDEBE9; margin: 16px 0; }
+.page-break { page-break-before: always; }
+.section-header { background: #F3ECFA; padding: 8px 16px; margin: 16px 0 8px; border-radius: 4px; }
+.section-header h2 { margin: 0; color: #7719AA; border: none; padding: 0; }
+.page-title { color: #7719AA; font-size: 18px; font-weight: 300; margin: 12px 0 6px; border-bottom: 1px solid #EDEBE9; padding-bottom: 4px; }
+.notebook-cover { text-align: center; padding: 60px 20px; }
+.notebook-cover h1 { font-size: 32px; border: none; color: #7719AA; }
+.notebook-cover .date { color: #A19F9D; font-size: 12px; margin-top: 8px; }
+</style></head><body>${htmlContent}</body></html>`;
+
+        await pdfWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(styledHtml)}`);
+
+        // Wait for content to render
+        await new Promise(r => setTimeout(r, 500));
+
+        const pdfData = await pdfWin.webContents.printToPDF({
+            printBackground: true,
+            marginsType: 0,
+            pageSize: 'Letter',
+        });
+
+        fs.writeFileSync(saveResult.filePath, pdfData);
+        pdfWin.close();
+
+        // Open the saved PDF
+        shell.openPath(saveResult.filePath);
+
+        return { success: true, path: saveResult.filePath };
+    } catch (e) {
+        console.error('[Export] Error generating PDF:', e);
+        return { success: false, error: e.message };
+    }
+});
+
 // ── App lifecycle ──
 app.whenReady().then(() => {
     initGDrive();
