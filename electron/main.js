@@ -208,11 +208,81 @@ ipcMain.handle('config:set-gemini-key', async (_event, key) => {
 });
 
 // ── IPC: Gemini AI ──
+let cachedModel = null;
+
+/**
+ * Fetches available models from Google AI Studio and picks the most balanced one.
+ * Priority: flash (balanced speed/quality) > pro (quality) > nano (speed).
+ * Within each tier, prefers the latest version.
+ */
+async function pickBestModel(ai) {
+    if (cachedModel) return cachedModel;
+
+    console.log('[Gemini] Obteniendo lista de modelos disponibles...');
+    const available = [];
+
+    const pager = await ai.models.list({ config: { pageSize: 100 } });
+    for await (const m of pager) {
+        const id = m.name?.replace('models/', '') || '';
+        const actions = m.supportedActions || [];
+        if (actions.includes('generateContent') && id.startsWith('gemini-')) {
+            available.push(id);
+        }
+    }
+
+    console.log('[Gemini] Modelos disponibles:', available);
+
+    if (available.length === 0) return null;
+
+    // Score each model: higher = better balanced
+    function scoreModel(name) {
+        let score = 0;
+        // Tier scoring (flash = balanced, ideal for writing assistant)
+        if (name.includes('flash-lite')) score += 50;
+        else if (name.includes('flash')) score += 100;  // Best balance
+        else if (name.includes('pro')) score += 80;
+        else if (name.includes('nano')) score += 30;
+        else score += 10;
+
+        // Prefer latest versions
+        const verMatch = name.match(/(\d+)\.(\d+)/);
+        if (verMatch) {
+            score += parseInt(verMatch[1]) * 10 + parseInt(verMatch[2]);
+        }
+
+        // Penalize experimental/preview
+        if (name.includes('exp') || name.includes('preview')) score -= 20;
+        // Penalize thinking models (slower)
+        if (name.includes('thinking')) score -= 30;
+        // Penalize image-generation models
+        if (name.includes('image')) score -= 40;
+
+        return score;
+    }
+
+    available.sort((a, b) => scoreModel(b) - scoreModel(a));
+    cachedModel = available[0];
+    console.log(`[Gemini] Modelo seleccionado: ${cachedModel} (score: ${scoreModel(cachedModel)})`);
+    return cachedModel;
+}
+
 ipcMain.handle('gemini:chat', async (_event, prompt, pageContext, selectedText) => {
     try {
         const config = loadConfig();
         const apiKey = config.geminiApiKey;
         if (!apiKey) return { success: false, error: 'No se ha configurado la API key de Gemini. Ve a Configuración → Gemini AI.' };
+
+        const { GoogleGenAI } = require('@google/genai');
+        const ai = new GoogleGenAI({ apiKey });
+
+        let modelName;
+        try {
+            modelName = await pickBestModel(ai);
+        } catch (listErr) {
+            console.error('[Gemini] Error listando modelos:', listErr.message);
+            modelName = 'gemini-2.0-flash-lite'; // fallback
+        }
+        if (!modelName) return { success: false, error: 'No se encontraron modelos Gemini disponibles para tu API key.' };
 
         const systemInstruction = `Eres un asistente de escritura integrado en LibreNote, una aplicación de notas. Tu rol es ayudar al usuario a mejorar, expandir, resumir, traducir o generar contenido basándote en el contexto de su página.
 
@@ -228,28 +298,32 @@ Devuelve tu respuesta en HTML listo para insertar en el editor (usa <p>, <strong
             userMessage += `\n\nContexto completo de la página:\n"""${pageContext}"""\n`;
         }
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                system_instruction: { parts: [{ text: systemInstruction }] },
-                contents: [{ parts: [{ text: userMessage }] }],
-                generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
-            }),
-        });
-
-        if (!response.ok) {
-            const err = await response.text();
-            console.error('[Gemini] API error:', err);
-            return { success: false, error: `Error de API (${response.status}): Verifica tu API key.` };
+        try {
+            const response = await ai.models.generateContent({
+                model: modelName,
+                contents: userMessage,
+                config: { systemInstruction, temperature: 0.7, maxOutputTokens: 4096 },
+            });
+            return { success: true, text: response.text || '', model: modelName };
+        } catch (genErr) {
+            // If model became unavailable, reset cache and retry with fresh list
+            if (genErr.message?.includes('404') || genErr.message?.includes('NOT_FOUND')) {
+                console.log('[Gemini] Modelo no disponible, re-buscando...');
+                cachedModel = null;
+                const newModel = await pickBestModel(ai);
+                if (!newModel) return { success: false, error: 'No hay modelos disponibles.' };
+                const response = await ai.models.generateContent({
+                    model: newModel,
+                    contents: userMessage,
+                    config: { systemInstruction, temperature: 0.7, maxOutputTokens: 4096 },
+                });
+                return { success: true, text: response.text || '', model: newModel };
+            }
+            throw genErr;
         }
-
-        const data = await response.json();
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        return { success: true, text };
     } catch (e) {
         console.error('[Gemini] Error:', e);
-        return { success: false, error: `Error de conexión: ${e.message}` };
+        return { success: false, error: `Error: ${e.message}` };
     }
 });
 

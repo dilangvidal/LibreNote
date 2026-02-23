@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/genai": "^1.42.0",
     "@tiptap/extension-code-block-lowlight": "^2.6.0",
     "@tiptap/extension-color": "^2.6.0",
     "@tiptap/extension-highlight": "^2.6.0",

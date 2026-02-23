@@ -7,6 +7,7 @@ export default function GeminiPanel({ editor, onClose, onInsert }) {
     const [response, setResponse] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [modelUsed, setModelUsed] = useState('');
     const inputRef = useRef(null);
 
     useEffect(() => {
@@ -30,6 +31,7 @@ export default function GeminiPanel({ editor, onClose, onInsert }) {
             const result = await api.geminiChat(prompt, pageContext, selectedText);
             if (result.success) {
                 setResponse(result.text);
+                if (result.model) setModelUsed(result.model);
             } else {
                 setError(result.error || 'Error desconocido');
             }
@@ -92,6 +94,7 @@ export default function GeminiPanel({ editor, onClose, onInsert }) {
                 <div className="gemini-panel-title">
                     <Sparkles size={16} className="gemini-icon" />
                     <span>Gemini AI</span>
+                    {modelUsed && <span style={{ fontSize: 10, opacity: 0.7, fontWeight: 400 }}>({modelUsed})</span>}
                 </div>
                 <button className="find-btn" onClick={onClose} title="Cerrar"><X size={14} /></button>
             </div>
