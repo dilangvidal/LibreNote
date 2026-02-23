@@ -9,15 +9,17 @@ import TextAlign from '@tiptap/extension-text-align';
 import Highlight from '@tiptap/extension-highlight';
 import DraggableImage from '../extensions/DraggableImage.js';
 import Link from '@tiptap/extension-link';
-import { FileText, Check, RefreshCw, Download, ExternalLink, X, Loader2, Clipboard, RemoveFormatting, FileType } from 'lucide-react';
+import { FileText, Check, RefreshCw, Download, ExternalLink, X, Loader2, Clipboard, RemoveFormatting, FileType, Scissors, Copy } from 'lucide-react';
 import { formatDate } from '../utils/helpers';
 
 export default function EditorArea({ page, onTitleChange, onContentChange, onEditorReady, syncStatus, api, gdriveConnected }) {
     const [linkPopup, setLinkPopup] = useState(null);
     const [linkDownloading, setLinkDownloading] = useState(false);
     const [pastePopup, setPastePopup] = useState(null);
+    const [contextMenu, setContextMenu] = useState(null);
     const popupRef = useRef(null);
     const pastePopupRef = useRef(null);
+    const contextMenuRef = useRef(null);
     const pendingPasteRef = useRef(null);
 
     const editor = useEditor({
@@ -91,13 +93,82 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
         if (!pastePopup) return;
         const handleClickOutside = (e) => {
             if (pastePopupRef.current && !pastePopupRef.current.contains(e.target)) {
-                // Auto-apply "keep original" if clicked outside
                 handlePasteKeepOriginal();
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [pastePopup]);
+
+    // Close context menu on outside click
+    useEffect(() => {
+        if (!contextMenu) return;
+        const handleClose = () => setContextMenu(null);
+        document.addEventListener('mousedown', handleClose);
+        return () => document.removeEventListener('mousedown', handleClose);
+    }, [contextMenu]);
+
+    // ── Simple markdown to HTML converter ──
+    function markdownToHtml(md) {
+        let html = md
+            // Code blocks (``` ... ```)
+            .replace(/```([\s\S]*?)```/g, (_, code) => `<pre><code>${code.trim()}</code></pre>`)
+            // Inline code
+            .replace(/`([^`]+)`/g, '<code>$1</code>')
+            // Headings
+            .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+            .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+            .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+            // Bold + Italic
+            .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+            // Bold
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/__(.+?)__/g, '<strong>$1</strong>')
+            // Italic
+            .replace(/\*(.+?)\*/g, '<em>$1</em>')
+            .replace(/_(.+?)_/g, '<em>$1</em>')
+            // Strikethrough
+            .replace(/~~(.+?)~~/g, '<s>$1</s>')
+            // Links
+            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+            // Blockquotes
+            .replace(/^> (.+)$/gm, '<blockquote><p>$1</p></blockquote>')
+            // Horizontal rules
+            .replace(/^---$/gm, '<hr>')
+            .replace(/^\*\*\*$/gm, '<hr>');
+
+        // Unordered lists
+        html = html.replace(/^(- .+\n?)+/gm, (match) => {
+            const items = match.trim().split('\n').map(line => `<li>${line.replace(/^- /, '')}</li>`).join('');
+            return `<ul>${items}</ul>`;
+        });
+
+        // Ordered lists
+        html = html.replace(/^(\d+\. .+\n?)+/gm, (match) => {
+            const items = match.trim().split('\n').map(line => `<li>${line.replace(/^\d+\. /, '')}</li>`).join('');
+            return `<ol>${items}</ol>`;
+        });
+
+        // Task lists
+        html = html.replace(/^(\[[ x]\] .+\n?)+/gm, (match) => {
+            const items = match.trim().split('\n').map(line => {
+                const checked = line.startsWith('[x]');
+                const text = line.replace(/^\[[ x]\] /, '');
+                return `<li data-type="taskItem" data-checked="${checked}">${text}</li>`;
+            }).join('');
+            return `<ul data-type="taskList">${items}</ul>`;
+        });
+
+        // Wrap remaining plain lines in paragraphs
+        html = html.split('\n').map(line => {
+            const trimmed = line.trim();
+            if (!trimmed) return '';
+            if (trimmed.startsWith('<')) return trimmed;
+            return `<p>${trimmed}</p>`;
+        }).join('');
+
+        return html;
+    }
 
     // ── Paste option handlers ──
     function handlePasteKeepOriginal() {
@@ -110,15 +181,25 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
 
     function handlePasteMergeFormat() {
         if (!editor || !pendingPasteRef.current) { setPastePopup(null); return; }
-        const { html } = pendingPasteRef.current;
-        // Strip inline styles but keep structural HTML (bold, italic, lists, etc.)
-        const cleaned = html
-            .replace(/\s*style="[^"]*"/gi, '')
-            .replace(/\s*class="[^"]*"/gi, '')
-            .replace(/<font[^>]*>/gi, '')
-            .replace(/<\/font>/gi, '')
-            .replace(/<span[^>]*>(.*?)<\/span>/gi, '$1');
-        editor.chain().focus().insertContent(cleaned).run();
+        const { html, text } = pendingPasteRef.current;
+
+        // Check if the plain text looks like markdown
+        const looksLikeMarkdown = /^#{1,3} |\*\*|^- |^\d+\. |^> |```|\[.+\]\(.+\)/m.test(text);
+
+        let content;
+        if (looksLikeMarkdown) {
+            content = markdownToHtml(text);
+        } else {
+            // Strip inline styles but keep structural HTML
+            content = html
+                .replace(/\s*style="[^"]*"/gi, '')
+                .replace(/\s*class="[^"]*"/gi, '')
+                .replace(/<font[^>]*>/gi, '')
+                .replace(/<\/font>/gi, '')
+                .replace(/<span[^>]*>(.*?)<\/span>/gi, '$1');
+        }
+
+        editor.chain().focus().insertContent(content).run();
         pendingPasteRef.current = null;
         setPastePopup(null);
     }
@@ -247,7 +328,14 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
                     {syncStatus === 'success' && <span style={{ color: '#107C10', display: 'flex', alignItems: 'center', gap: 4 }}><Check size={11} /> Guardado</span>}
                 </div>
             </div>
-            <div className="editor-wrapper ruled" onClick={(e) => { handleEditorClick(e); handleWrapperClick(e); }} style={{ position: 'relative', cursor: 'text' }}>
+            <div className="editor-wrapper ruled" onClick={(e) => { handleEditorClick(e); handleWrapperClick(e); }} onContextMenu={(e) => {
+                e.preventDefault();
+                const wrapperRect = e.currentTarget.getBoundingClientRect();
+                setContextMenu({
+                    x: e.clientX - wrapperRect.left,
+                    y: e.clientY - wrapperRect.top,
+                });
+            }} style={{ position: 'relative', cursor: 'text' }}>
                 <EditorContent editor={editor} />
 
                 {/* Drive link popup */}
@@ -288,6 +376,38 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
                                 <span>Solo texto</span>
                             </button>
                         </div>
+                    </div>
+                )}
+
+                {/* Right-click context menu */}
+                {contextMenu && (
+                    <div className="editor-context-menu" ref={contextMenuRef} style={{ left: contextMenu.x, top: contextMenu.y }}
+                        onMouseDown={e => e.stopPropagation()}>
+                        <button className="context-menu-item" onClick={() => { document.execCommand('cut'); setContextMenu(null); }}>
+                            <Scissors size={14} /><span>Cortar</span>
+                        </button>
+                        <button className="context-menu-item" onClick={() => { document.execCommand('copy'); setContextMenu(null); }}>
+                            <Copy size={14} /><span>Copiar</span>
+                        </button>
+                        <button className="context-menu-item" onClick={async () => {
+                            setContextMenu(null);
+                            try {
+                                const clipText = await navigator.clipboard.readText();
+                                if (clipText && editor) editor.chain().focus().insertContent(clipText).run();
+                            } catch { document.execCommand('paste'); }
+                        }}>
+                            <Clipboard size={14} /><span>Pegar</span>
+                        </button>
+                        <div className="context-menu-divider" />
+                        <button className="context-menu-item" onClick={async () => {
+                            setContextMenu(null);
+                            try {
+                                const clipText = await navigator.clipboard.readText();
+                                if (clipText && editor) editor.chain().focus().insertContent(clipText).run();
+                            } catch { document.execCommand('paste'); }
+                        }}>
+                            <RemoveFormatting size={14} /><span>Pegar sin formato</span>
+                        </button>
                     </div>
                 )}
             </div>

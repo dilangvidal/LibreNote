@@ -154,7 +154,7 @@ export default function RibbonBar({ editor, onOpenDriveSearch, gdriveConnected, 
                         </div>
                         {gdriveConnected && (
                             <div className="ribbon-group">
-                                <button className="ribbon-btn" onClick={onOpenDriveSearch} title="Buscar en Drive"><FileSearch size={15} /><span className="label">Buscar en Drive</span></button>
+                                <button className="ribbon-btn" onClick={onOpenDriveSearch} title="Buscar en Drive"><Search size={15} /><span className="label">Buscar en Drive</span></button>
                             </div>
                         )}
                     </>
