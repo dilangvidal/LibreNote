@@ -101,8 +101,12 @@ export default function App() {
                     onSelectPage={pid => nb.setActivePageId(pid)}
                     onAddPage={() => { if (nb.activeNotebookId && nb.activeSectionId) nb.addPage(nb.activeNotebookId, nb.activeSectionId); }}
                     onDeletePage={pid => { if (nb.activeNotebookId && nb.activeSectionId) nb.deletePage(nb.activeNotebookId, nb.activeSectionId, pid); }}
+                    onDuplicatePage={pid => { if (nb.activeNotebookId && nb.activeSectionId) nb.duplicatePage(nb.activeNotebookId, nb.activeSectionId, pid); }}
+                    onReorderPages={(from, to) => { if (nb.activeNotebookId && nb.activeSectionId) nb.reorderPages(nb.activeNotebookId, nb.activeSectionId, from, to); }}
+                    onMovePageToSection={(pid, destNbId, destSecId) => { if (nb.activeNotebookId && nb.activeSectionId) nb.movePageToSection(nb.activeNotebookId, nb.activeSectionId, pid, destNbId, destSecId); }}
                     onToggle={() => layout.setPageListCollapsed(!layout.pageListCollapsed)}
                     gdriveConnected={gdrive.gdriveConnected}
+                    notebooks={nb.notebooks} activeNotebookId={nb.activeNotebookId} activeSectionId={nb.activeSectionId}
                 />
                 <EditorArea page={nb.activePage} onTitleChange={nb.updatePageTitle} onContentChange={nb.updatePageContent}
                     onEditorReady={e => setEditorRef(e)} syncStatus={gdrive.syncStatus}

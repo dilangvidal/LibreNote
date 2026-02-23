@@ -195,6 +195,86 @@ export default function useNotebooks() {
         }));
     }
 
+    // ── Reorder pages via drag ──
+    function reorderPages(nbId, secId, fromIndex, toIndex) {
+        updateNotebooks(prev => prev.map(n => n.id !== nbId ? n : {
+            ...n,
+            sections: n.sections.map(s => {
+                if (s.id !== secId) return s;
+                const pages = [...s.pages];
+                const [moved] = pages.splice(fromIndex, 1);
+                pages.splice(toIndex, 0, moved);
+                return { ...s, pages };
+            }),
+        }));
+    }
+
+    // ── Duplicate page ──
+    function duplicatePage(nbId, secId, pageId) {
+        const newId = generateId();
+        updateNotebooks(prev => prev.map(n => n.id !== nbId ? n : {
+            ...n,
+            sections: n.sections.map(s => {
+                if (s.id !== secId) return s;
+                const orig = s.pages.find(p => p.id === pageId);
+                if (!orig) return s;
+                const copy = {
+                    ...orig,
+                    id: newId,
+                    title: (orig.title || 'Sin título') + ' (copia)',
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                };
+                const idx = s.pages.findIndex(p => p.id === pageId);
+                const pages = [...s.pages];
+                pages.splice(idx + 1, 0, copy);
+                return { ...s, pages };
+            }),
+        }));
+        setActivePageId(newId);
+    }
+
+    // ── Move page to another section ──
+    function movePageToSection(srcNbId, srcSecId, pageId, destNbId, destSecId) {
+        let movedPage = null;
+        setNotebooks(prev => {
+            const next = prev.map(n => {
+                // Remove from source section
+                if (n.id === srcNbId) {
+                    return {
+                        ...n,
+                        sections: n.sections.map(s => {
+                            if (s.id !== srcSecId) return s;
+                            const page = s.pages.find(p => p.id === pageId);
+                            if (page) movedPage = { ...page, updatedAt: new Date().toISOString() };
+                            return { ...s, pages: s.pages.filter(p => p.id !== pageId) };
+                        }),
+                    };
+                }
+                return n;
+            }).map(n => {
+                // Add to destination section
+                if (n.id === destNbId && movedPage) {
+                    return {
+                        ...n,
+                        sections: n.sections.map(s => {
+                            if (s.id !== destSecId) return s;
+                            return { ...s, pages: [...s.pages, movedPage] };
+                        }),
+                    };
+                }
+                return n;
+            });
+            // Save both affected notebooks
+            const srcNb = next.find(n => n.id === srcNbId);
+            const destNb = next.find(n => n.id === destNbId);
+            if (srcNb) { srcNb.updatedAt = new Date().toISOString(); api.saveNotebook(srcNb); }
+            if (destNb && destNb.id !== srcNbId) { destNb.updatedAt = new Date().toISOString(); api.saveNotebook(destNb); }
+            return next;
+        });
+        if (activePageId === pageId) setActivePageId(null);
+    }
+
     // ── Búsqueda local ──
     function searchNotebooks(query) {
         if (!query.trim()) return [];
@@ -238,6 +318,7 @@ export default function useNotebooks() {
         addNotebook, deleteNotebook, renameNotebook,
         addSection, deleteSection, renameSection,
         addPage, deletePage, updatePageTitle, updatePageContent,
+        reorderPages, duplicatePage, movePageToSection,
         searchNotebooks, selectSearchResult, selectSection,
     };
 }
