@@ -1,7 +1,7 @@
-const { app, BrowserWindow, ipcMain, Menu, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { initGDrive, handleGDriveAuth, syncToGDrive, syncFromGDrive, isAuthenticated, logout, uploadFileToDrive, searchDriveFiles, getFileUrl } = require('./gdrive');
+const { initGDrive, handleGDriveAuth, syncToGDrive, syncFromGDrive, isAuthenticated, logout, uploadFileToDrive, searchDriveFiles, getFileUrl, downloadDriveFile } = require('./gdrive');
 
 const DATA_DIR = path.join(app.getPath('home'), 'NoteFlowData', 'notebooks');
 
@@ -99,7 +99,7 @@ ipcMain.handle('storage:delete-notebook', async (_event, notebookId) => {
     return true;
 });
 
-// ── IPC: File Picker ──
+// ── IPC: File Operations ──
 ipcMain.handle('file:pick-image', async () => {
     const result = await dialog.showOpenDialog(mainWindow, {
         properties: ['openFile'],
@@ -129,13 +129,23 @@ ipcMain.handle('file:pick', async (_event, acceptLabel) => {
     return { name: path.basename(filePath), path: filePath, size: fs.statSync(filePath).size };
 });
 
+ipcMain.handle('file:open-local', async (_event, filePath) => {
+    try {
+        await shell.openPath(filePath);
+        return true;
+    } catch (e) {
+        console.error('[File] Error opening file:', e);
+        return false;
+    }
+});
+
 // ── IPC: Google Drive ──
 ipcMain.handle('gdrive:is-authenticated', async () => {
     return isAuthenticated();
 });
 
 ipcMain.handle('gdrive:auth', async () => {
-    return await handleGDriveAuth(mainWindow);
+    return await handleGDriveAuth();
 });
 
 ipcMain.handle('gdrive:logout', async () => {
@@ -160,6 +170,10 @@ ipcMain.handle('gdrive:search-files', async (_event, query) => {
 
 ipcMain.handle('gdrive:get-file-url', async (_event, fileId) => {
     return await getFileUrl(fileId);
+});
+
+ipcMain.handle('gdrive:download-file', async (_event, fileId, fileName) => {
+    return await downloadDriveFile(fileId, fileName);
 });
 
 // ── App lifecycle ──

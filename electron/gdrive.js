@@ -1,4 +1,4 @@
-const { BrowserWindow } = require('electron');
+const { shell } = require('electron');
 const https = require('https');
 const http = require('http');
 const fs = require('fs');
@@ -6,38 +6,38 @@ const path = require('path');
 const { app } = require('electron');
 const url = require('url');
 
-// ── Config ──
+// ── Config — se cargan desde electron/client_secret.json ──
 const CLIENT_SECRET_PATH = path.join(__dirname, 'client_secret.json');
 const TOKEN_PATH = path.join(app.getPath('userData'), 'gdrive-token.json');
 
-// Config loaded from bundled client_secret.json
-let config = {
+const config = {
     clientId: '',
     clientSecret: '',
     redirectUri: 'http://127.0.0.1:8234',
-    scopes: ['https://www.googleapis.com/auth/drive.file'],
+    scopes: [
+        'https://www.googleapis.com/auth/drive.file',
+        'https://www.googleapis.com/auth/drive.readonly',
+    ],
 };
 
-let tokens = null;
-
 function loadConfig() {
-    // Load from bundled client_secret.json
     if (fs.existsSync(CLIENT_SECRET_PATH)) {
         try {
             const raw = JSON.parse(fs.readFileSync(CLIENT_SECRET_PATH, 'utf-8'));
             const creds = raw.installed || raw.web || {};
             config.clientId = creds.client_id || '';
             config.clientSecret = creds.client_secret || '';
-            console.log('[GDrive] Loaded credentials from client_secret.json, clientId:', config.clientId.substring(0, 20) + '...');
+            console.log('[GDrive] Credenciales cargadas desde client_secret.json');
         } catch (e) {
-            console.error('[GDrive] Failed to load client_secret.json:', e.message);
+            console.error('[GDrive] Error al leer client_secret.json:', e.message);
         }
     } else {
-        console.warn('[GDrive] client_secret.json not found at', CLIENT_SECRET_PATH);
+        console.warn('[GDrive] No se encontró client_secret.json en', CLIENT_SECRET_PATH);
+        console.warn('[GDrive] Consulta el README.md para configurar Google Drive.');
     }
 }
 
-
+let tokens = null;
 
 function loadTokens() {
     if (fs.existsSync(TOKEN_PATH)) {
@@ -54,6 +54,7 @@ function saveTokens() {
 function initGDrive() {
     loadConfig();
     loadTokens();
+    console.log('[GDrive] Inicializado. Autenticado:', isAuthenticated());
 }
 
 function isAuthenticated() {
@@ -66,21 +67,44 @@ function logout() {
     return true;
 }
 
-// ── OAuth2 Flow ──
-function handleGDriveAuth(parentWindow) {
+// ── OAuth2 Flow — abre en el navegador predeterminado del sistema ──
+function handleGDriveAuth() {
     return new Promise((resolve, reject) => {
-        if (!config.clientId) {
-            reject(new Error('No Google OAuth Client ID configured. Please set it in Settings.'));
+        // Si ya estamos autenticados, resolver de inmediato
+        if (isAuthenticated()) {
+            resolve({ success: true });
             return;
         }
 
-        // Start a local HTTP server to receive the redirect
+        // Crear servidor HTTP local para recibir el callback de OAuth
         const server = http.createServer(async (req, res) => {
             const parsedUrl = url.parse(req.url, true);
             const code = parsedUrl.query.code;
+            const error = parsedUrl.query.error;
+
+            if (error) {
+                res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+                res.end(`
+                    <html><body style="background:#1a1a2e;color:#ff6b6b;font-family:'Segoe UI',Inter,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;flex-direction:column">
+                        <h2 style="margin-bottom:8px">❌ Error de autenticación</h2>
+                        <p style="color:#ccc;font-size:14px">${error}</p>
+                        <p style="color:#888;font-size:12px;margin-top:16px">Puedes cerrar esta pestaña.</p>
+                    </body></html>
+                `);
+                server.close();
+                reject(new Error(`Autenticación cancelada: ${error}`));
+                return;
+            }
+
             if (code) {
-                res.writeHead(200, { 'Content-Type': 'text/html' });
-                res.end('<html><body style="background:#0f0f17;color:#fff;font-family:Inter,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><h2>✅ Authenticated! You can close this window.</h2></body></html>');
+                res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+                res.end(`
+                    <html><body style="background:#1a1a2e;color:#00d68f;font-family:'Segoe UI',Inter,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;flex-direction:column">
+                        <h2 style="margin-bottom:8px">✅ ¡Autenticación exitosa!</h2>
+                        <p style="color:#ccc;font-size:14px">NoteFlow se ha conectado a tu Google Drive.</p>
+                        <p style="color:#888;font-size:12px;margin-top:16px">Puedes cerrar esta pestaña y volver a la aplicación.</p>
+                    </body></html>
+                `);
                 server.close();
                 try {
                     await exchangeCodeForTokens(code);
@@ -92,10 +116,18 @@ function handleGDriveAuth(parentWindow) {
                 res.writeHead(204);
                 res.end();
             } else {
-                res.writeHead(400);
-                res.end('No code received');
+                res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' });
+                res.end('<html><body style="background:#1a1a2e;color:#ff6b6b;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><h2>No se recibió código de autorización</h2></body></html>');
             }
         });
+
+        // Timeout de 5 minutos para la autenticación
+        const timeout = setTimeout(() => {
+            server.close();
+            reject(new Error('Tiempo de espera agotado para la autenticación'));
+        }, 5 * 60 * 1000);
+
+        server.on('close', () => clearTimeout(timeout));
 
         server.listen(8234, () => {
             const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
@@ -106,18 +138,17 @@ function handleGDriveAuth(parentWindow) {
                 `&access_type=offline` +
                 `&prompt=consent`;
 
-            const authWindow = new BrowserWindow({
-                width: 600,
-                height: 700,
-                parent: parentWindow,
-                modal: true,
-                webPreferences: { nodeIntegration: false, contextIsolation: true },
-            });
+            // Abrir en el navegador predeterminado del sistema
+            console.log('[GDrive] Abriendo navegador para autenticación...');
+            shell.openExternal(authUrl);
+        });
 
-            authWindow.loadURL(authUrl);
-            authWindow.on('closed', () => {
-                server.close();
-            });
+        server.on('error', (err) => {
+            if (err.code === 'EADDRINUSE') {
+                reject(new Error('El puerto 8234 está en uso. Cierra otras instancias de NoteFlow e intenta de nuevo.'));
+            } else {
+                reject(err);
+            }
         });
     });
 }
@@ -151,7 +182,7 @@ function exchangeCodeForTokens(code) {
                         saveTokens();
                         resolve(tokenData);
                     } else {
-                        reject(new Error(tokenData.error_description || 'Token exchange failed'));
+                        reject(new Error(tokenData.error_description || 'Error al intercambiar el código por tokens'));
                     }
                 } catch (e) { reject(e); }
             });
@@ -163,7 +194,7 @@ function exchangeCodeForTokens(code) {
 }
 
 async function refreshAccessToken() {
-    if (!tokens || !tokens.refresh_token) throw new Error('No refresh token');
+    if (!tokens || !tokens.refresh_token) throw new Error('No hay refresh token');
     return new Promise((resolve, reject) => {
         const postData = new URLSearchParams({
             client_id: config.clientId,
@@ -184,14 +215,16 @@ async function refreshAccessToken() {
             let body = '';
             res.on('data', (chunk) => body += chunk);
             res.on('end', () => {
-                const data = JSON.parse(body);
-                if (data.access_token) {
-                    tokens.access_token = data.access_token;
-                    saveTokens();
-                    resolve(tokens);
-                } else {
-                    reject(new Error('Refresh failed'));
-                }
+                try {
+                    const data = JSON.parse(body);
+                    if (data.access_token) {
+                        tokens.access_token = data.access_token;
+                        saveTokens();
+                        resolve(tokens);
+                    } else {
+                        reject(new Error('Error al refrescar el token'));
+                    }
+                } catch (e) { reject(e); }
             });
         });
         req.on('error', reject);
@@ -203,8 +236,7 @@ async function refreshAccessToken() {
 // ── Drive API helpers ──
 function driveRequest(method, pathStr, body, isUpload) {
     return new Promise(async (resolve, reject) => {
-        if (!tokens) return reject(new Error('Not authenticated'));
-        const hostname = isUpload ? 'www.googleapis.com' : 'www.googleapis.com';
+        if (!tokens) return reject(new Error('No autenticado'));
         const headers = {
             'Authorization': `Bearer ${tokens.access_token}`,
         };
@@ -212,7 +244,7 @@ function driveRequest(method, pathStr, body, isUpload) {
             headers['Content-Type'] = 'application/json';
         }
         const options = {
-            hostname,
+            hostname: 'www.googleapis.com',
             path: pathStr,
             method,
             headers,
@@ -222,7 +254,6 @@ function driveRequest(method, pathStr, body, isUpload) {
             res.on('data', (chunk) => data += chunk);
             res.on('end', () => {
                 if (res.statusCode === 401) {
-                    // Try refresh
                     refreshAccessToken()
                         .then(() => driveRequest(method, pathStr, body, isUpload))
                         .then(resolve)
@@ -243,12 +274,10 @@ function driveRequest(method, pathStr, body, isUpload) {
 }
 
 async function findOrCreateFolder(name) {
-    // Search for existing folder
     const query = `name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
     const res = await driveRequest('GET', `/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)`);
     if (res.files && res.files.length > 0) return res.files[0].id;
 
-    // Create folder
     const folder = await driveRequest('POST', '/drive/v3/files', {
         name,
         mimeType: 'application/vnd.google-apps.folder',
@@ -264,12 +293,10 @@ async function syncToGDrive(notebooks) {
             const fileName = `${nb.id}.json`;
             const content = JSON.stringify(nb, null, 2);
 
-            // Check if file exists
             const query = `name='${fileName}' and '${folderId}' in parents and trashed=false`;
             const existing = await driveRequest('GET', `/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)`);
 
             if (existing.files && existing.files.length > 0) {
-                // Update existing file
                 const fileId = existing.files[0].id;
                 const boundary = '----NoteFlowBoundary';
                 const delimiter = `\r\n--${boundary}\r\n`;
@@ -303,7 +330,6 @@ async function syncToGDrive(notebooks) {
                     req.end();
                 });
             } else {
-                // Create new file
                 const boundary = '----NoteFlowBoundary';
                 const delimiter = `\r\n--${boundary}\r\n`;
                 const closeDelimiter = `\r\n--${boundary}--`;
@@ -435,6 +461,53 @@ async function getFileUrl(fileId) {
     }
 }
 
+async function downloadDriveFile(fileId, fileName) {
+    try {
+        if (!tokens) throw new Error('No autenticado');
+        const downloadDir = path.join(app.getPath('home'), 'NoteFlowData', 'downloads');
+        if (!fs.existsSync(downloadDir)) fs.mkdirSync(downloadDir, { recursive: true });
+
+        const filePath = path.join(downloadDir, fileName);
+
+        return new Promise((resolve, reject) => {
+            const req = https.request({
+                hostname: 'www.googleapis.com',
+                path: `/drive/v3/files/${fileId}?alt=media`,
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${tokens.access_token}` },
+            }, (res) => {
+                if (res.statusCode === 401) {
+                    refreshAccessToken()
+                        .then(() => downloadDriveFile(fileId, fileName))
+                        .then(resolve)
+                        .catch(reject);
+                    return;
+                }
+                if (res.statusCode !== 200) {
+                    let body = '';
+                    res.on('data', c => body += c);
+                    res.on('end', () => reject(new Error(`Error ${res.statusCode}: ${body}`)));
+                    return;
+                }
+                const fileStream = fs.createWriteStream(filePath);
+                res.pipe(fileStream);
+                fileStream.on('finish', () => {
+                    fileStream.close();
+                    resolve({ success: true, path: filePath });
+                });
+                fileStream.on('error', (e) => {
+                    fs.unlink(filePath, () => { });
+                    reject(e);
+                });
+            });
+            req.on('error', reject);
+            req.end();
+        });
+    } catch (err) {
+        return { success: false, error: err.message };
+    }
+}
+
 module.exports = {
     initGDrive,
     handleGDriveAuth,
@@ -445,4 +518,5 @@ module.exports = {
     uploadFileToDrive,
     searchDriveFiles,
     getFileUrl,
+    downloadDriveFile,
 };

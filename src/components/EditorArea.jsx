@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -9,8 +9,9 @@ import TextAlign from '@tiptap/extension-text-align';
 import Highlight from '@tiptap/extension-highlight';
 import Image from '@tiptap/extension-image';
 import { FileText, Check, RefreshCw } from 'lucide-react';
+import { formatDate } from '../utils/helpers';
 
-export default function EditorArea({ page, onTitleChange, onContentChange, onEditorReady, syncStatus, onSlashSearch }) {
+export default function EditorArea({ page, onTitleChange, onContentChange, onEditorReady, syncStatus, onSlashSearch, api, gdriveConnected }) {
     const lastSlashRef = useRef('');
 
     const editor = useEditor({
@@ -28,10 +29,9 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
         onUpdate: ({ editor }) => {
             const html = editor.getHTML();
             if (onContentChange) onContentChange(html);
-            // Detect /search command
+            // Detectar comando /search
             const text = editor.getText();
             if (text.endsWith('/search')) {
-                // Remove the /search text and open Drive search
                 const { from } = editor.state.selection;
                 editor.chain().focus().deleteRange({ from: from - 7, to: from }).run();
                 if (onSlashSearch) onSlashSearch();
@@ -43,6 +43,62 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
     useEffect(() => { if (editor && onEditorReady) onEditorReady(editor); }, [editor, onEditorReady]);
     useEffect(() => { if (editor && page) { const cur = editor.getHTML(); if (cur !== page.content) editor.commands.setContent(page.content || '', false); } }, [editor, page?.id]);
     useEffect(() => () => { if (onEditorReady) onEditorReady(null); }, []);
+
+    // ── Ctrl+Clic en links de Drive → descargar y abrir localmente ──
+    const handleEditorClick = useCallback(async (e) => {
+        // Solo procesar Ctrl+clic (o Cmd+clic en Mac)
+        if (!e.ctrlKey && !e.metaKey) return;
+
+        const link = e.target.closest('a');
+        if (!link) return;
+
+        const href = link.getAttribute('href');
+        if (!href) return;
+
+        // Verificar si es un link de Google Drive
+        const driveMatch = href.match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/);
+        if (!driveMatch && !href.includes('drive.google.com')) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const fileId = driveMatch ? driveMatch[1] : null;
+        const fileName = link.textContent || 'archivo';
+
+        if (!fileId) {
+            // Si no pudimos extraer el ID, abrir en navegador
+            if (api?.openLocalFile) {
+                // Intentar abrir como URL externa
+                window.open(href, '_blank');
+            }
+            return;
+        }
+
+        if (!gdriveConnected || !api?.gdriveDownloadFile) {
+            window.open(href, '_blank');
+            return;
+        }
+
+        // Indicar que está descargando
+        link.style.opacity = '0.5';
+        link.style.pointerEvents = 'none';
+
+        try {
+            const result = await api.gdriveDownloadFile(fileId, fileName);
+            if (result?.success && result.path) {
+                await api.openLocalFile(result.path);
+            } else {
+                // Fallback: abrir en navegador
+                window.open(href, '_blank');
+            }
+        } catch (err) {
+            console.error('[EditorArea] Error descargando archivo:', err);
+            window.open(href, '_blank');
+        } finally {
+            link.style.opacity = '';
+            link.style.pointerEvents = '';
+        }
+    }, [api, gdriveConnected]);
 
     if (!page) {
         return (
@@ -56,8 +112,6 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
         );
     }
 
-    function formatDate(d) { if (!d) return ''; return new Date(d).toLocaleString('es', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
-
     return (
         <div className="editor-area">
             <div className="editor-header">
@@ -70,7 +124,7 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
                     {syncStatus === 'success' && <span style={{ color: '#107C10', display: 'flex', alignItems: 'center', gap: 4 }}><Check size={11} /> Guardado</span>}
                 </div>
             </div>
-            <div className="editor-wrapper ruled">
+            <div className="editor-wrapper ruled" onClick={handleEditorClick}>
                 <EditorContent editor={editor} />
             </div>
         </div>

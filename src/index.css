@@ -66,6 +66,78 @@
     --transition-normal: 0.2s ease;
 }
 
+/* ── Dark Mode ── */
+[data-theme="dark"] {
+    --onenote-purple: #AE4BD5;
+    --onenote-purple-dark: #CA64EA;
+    --onenote-purple-light: #9332BF;
+    --onenote-purple-lighter: #7719AA;
+    --onenote-purple-accent: #CA64EA;
+    --onenote-purple-bg: #2A1A3A;
+    --onenote-purple-hover: #3A2550;
+
+    --bg-app: #1A1A2E;
+    --bg-sidebar: #16213E;
+    --bg-page-list: #1E1E3A;
+    --bg-editor: #1A1A2E;
+    --bg-ribbon: #16213E;
+    --bg-ribbon-active: #1E1E3A;
+    --bg-hover: #2A2A4A;
+    --bg-active: #333366;
+    --bg-selected: #3A2550;
+    --bg-tertiary: #2A2A4A;
+
+    --text-primary: #E8E8F0;
+    --text-secondary: #A0A0C0;
+    --text-tertiary: #6060A0;
+    --text-inverse: #FFFFFF;
+    --text-accent: #CA64EA;
+    --text-link: #6EB5FF;
+
+    --border-default: #2A2A4A;
+    --border-strong: #404070;
+    --border-focus: #AE4BD5;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.5);
+    --shadow-ribbon: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .ProseMirror code {
+    background: #2A2A4A;
+    color: #CA64EA;
+}
+
+[data-theme="dark"] .ProseMirror pre {
+    background: #16213E;
+    border-color: #2A2A4A;
+}
+
+[data-theme="dark"] .ProseMirror pre code {
+    color: #E8E8F0;
+}
+
+[data-theme="dark"] .ProseMirror ul[data-type="taskList"] li label input[type="checkbox"] {
+    background: #2A2A4A;
+    border-color: #404070;
+}
+
+[data-theme="dark"] .btn-danger:hover {
+    background: #3A1A1A;
+}
+
+[data-theme="dark"] .context-menu-item.danger:hover {
+    background: #3A1A1A;
+}
+
+[data-theme="dark"] .editor-wrapper.ruled {
+    background-image: repeating-linear-gradient(transparent,
+            transparent 27px,
+            #2A2A4A 27px,
+            #2A2A4A 28px);
+}
+
 /* ── Reset ── */
 *,
 *::before,
@@ -1054,6 +1126,20 @@ body {
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
     }
 }
 
