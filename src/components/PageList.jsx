@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, Trash2, Copy, MoveRight, GripVertical } from 'lucide-react';
 import ConfirmDeleteModal from './ConfirmDeleteModal.jsx';
 
@@ -13,6 +13,40 @@ export default function PageList({
     const dragItemRef = useRef(null);
     const dragOverRef = useRef(null);
     const [dragOverIndex, setDragOverIndex] = useState(null);
+    const [panelWidth, setPanelWidth] = useState(() => {
+        const saved = localStorage.getItem('noteflow-pagelist-width');
+        return saved ? parseInt(saved, 10) : 240;
+    });
+    const isResizingRef = useRef(false);
+    const panelRef = useRef(null);
+
+    const handleResizeMouseDown = useCallback((e) => {
+        if (window.innerWidth <= 768) return;
+        e.preventDefault();
+        isResizingRef.current = true;
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+
+        const panelLeft = panelRef.current?.getBoundingClientRect().left || 0;
+        const onMouseMove = (ev) => {
+            if (!isResizingRef.current) return;
+            const newWidth = Math.min(450, Math.max(160, ev.clientX - panelLeft));
+            setPanelWidth(newWidth);
+        };
+        const onMouseUp = () => {
+            isResizingRef.current = false;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    }, []);
+
+    useEffect(() => {
+        localStorage.setItem('noteflow-pagelist-width', String(panelWidth));
+    }, [panelWidth]);
 
     useEffect(() => {
         if (ctx) {
@@ -88,9 +122,13 @@ export default function PageList({
         return targets;
     }
 
+    const panelStyle = !collapsed && window.innerWidth > 768
+        ? { width: panelWidth, minWidth: panelWidth, maxWidth: panelWidth }
+        : {};
+
     if (!section) {
         return (
-            <div className={`page-list-panel ${collapsed ? 'collapsed' : ''}`}>
+            <div className={`page-list-panel ${collapsed ? 'collapsed' : ''}`} ref={panelRef} style={panelStyle}>
                 <div className="page-list-header"><h3>Páginas</h3></div>
                 <div className="empty-state" style={{ padding: 20 }}><p style={{ fontSize: 12 }}>Selecciona una sección</p></div>
             </div>
@@ -98,7 +136,7 @@ export default function PageList({
     }
 
     return (
-        <div className={`page-list-panel ${collapsed ? 'collapsed' : ''}`}>
+        <div className={`page-list-panel ${collapsed ? 'collapsed' : ''}`} ref={panelRef} style={panelStyle}>
             <div className="page-list-header">
                 <h3 style={{ color: section.color || '#7719AA' }}>{section.name}</h3>
                 <button className="btn-icon" onClick={onAddPage} title="Nueva página"><Plus size={15} /></button>
@@ -163,6 +201,7 @@ export default function PageList({
                     onCancel={() => setDeleteConfirm(null)}
                 />
             )}
+            {!collapsed && <div className="panel-resize-handle" onMouseDown={handleResizeMouseDown} />}
         </div>
     );
 }

@@ -377,6 +377,30 @@ body {
     border-color: var(--onenote-purple);
 }
 
+/* ══ PANEL RESIZE HANDLE ══ */
+.panel-resize-handle {
+    position: absolute;
+    top: 0;
+    right: -3px;
+    width: 6px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 10;
+    transition: background var(--transition-fast);
+}
+
+.panel-resize-handle:hover,
+.panel-resize-handle:active {
+    background: var(--onenote-purple);
+    opacity: 0.4;
+}
+
+@media (max-width: 768px) {
+    .panel-resize-handle {
+        display: none;
+    }
+}
+
 /* ══ MAIN 3-COLUMN AREA ══ */
 .main-area {
     display: flex;
@@ -394,6 +418,7 @@ body {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    position: relative;
     transition: width var(--transition-normal), min-width var(--transition-normal), max-width var(--transition-normal);
 }
 
@@ -562,6 +587,7 @@ body {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    position: relative;
     transition: width var(--transition-normal), min-width var(--transition-normal), max-width var(--transition-normal);
 }
 
@@ -2287,4 +2313,362 @@ body {
 
 .gemini-ctx-item svg {
     color: var(--onenote-purple) !important;
+}
+
+/* ══ TIPTAP TABLE STYLES ══ */
+.ProseMirror table {
+    border-collapse: collapse;
+    table-layout: fixed;
+    width: 100%;
+    margin: 12px 0;
+    overflow: hidden;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+}
+
+.ProseMirror th,
+.ProseMirror td {
+    min-width: 80px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-default);
+    vertical-align: top;
+    position: relative;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.ProseMirror th {
+    background: var(--bg-sidebar);
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: left;
+}
+
+.ProseMirror td {
+    background: var(--bg-editor);
+}
+
+.ProseMirror th p,
+.ProseMirror td p {
+    margin: 0;
+}
+
+/* Selected cell */
+.ProseMirror .selectedCell::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background: rgba(119, 25, 170, 0.12);
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* Column resize handle */
+.ProseMirror .column-resize-handle {
+    position: absolute;
+    right: -2px;
+    top: 0;
+    bottom: -2px;
+    width: 4px;
+    background-color: var(--onenote-purple);
+    cursor: col-resize;
+    z-index: 10;
+}
+
+.ProseMirror.resize-cursor {
+    cursor: col-resize;
+}
+
+/* Hover row highlight */
+.ProseMirror tr:hover td {
+    background: var(--bg-hover);
+}
+
+.ProseMirror tr:hover th {
+    background: var(--bg-selected);
+}
+
+/* ══ TABLE PICKER DROPDOWN ══ */
+.table-picker-wrapper {
+    position: relative;
+}
+
+.table-picker-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    background: var(--bg-editor);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 200;
+    padding: 10px;
+    animation: slideUp 0.12s ease;
+}
+
+.table-picker-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-bottom: 8px;
+    font-weight: 500;
+    min-width: 180px;
+}
+
+.table-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(10, 18px);
+    grid-template-rows: repeat(8, 18px);
+    gap: 2px;
+}
+
+.table-picker-cell {
+    width: 18px;
+    height: 18px;
+    border: 1px solid var(--border-default);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background 0.08s, border-color 0.08s;
+    background: var(--bg-editor);
+}
+
+.table-picker-cell:hover,
+.table-picker-cell.active {
+    background: rgba(119, 25, 170, 0.2);
+    border-color: var(--onenote-purple);
+}
+
+/* Dark mode table adjustments */
+[data-theme="dark"] .ProseMirror th {
+    background: var(--bg-sidebar);
+}
+
+[data-theme="dark"] .ProseMirror td {
+    background: var(--bg-editor);
+}
+
+[data-theme="dark"] .ProseMirror tr:hover td {
+    background: var(--bg-hover);
+}
+
+[data-theme="dark"] .ProseMirror .selectedCell::after {
+    background: rgba(119, 25, 170, 0.2);
+}
+
+/* ══ CONTEXTUAL RIBBON TAB (Word-style) ══ */
+.ribbon-tab.contextual {
+    color: #ffffff;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.18);
+    border-bottom: 2px solid #FFD54F;
+}
+
+.ribbon-tab.contextual:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.ribbon-tab.contextual.active {
+    color: var(--text-primary);
+    background: var(--bg-ribbon-active);
+    font-weight: 600;
+    border-bottom: 2px solid var(--onenote-purple);
+}
+
+.ribbon-group-title {
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 0 6px 0 2px;
+    white-space: nowrap;
+}
+
+.ribbon-btn-danger:hover {
+    color: #D13438 !important;
+    background: rgba(209, 52, 56, 0.1) !important;
+}
+
+[data-theme="dark"] .ribbon-btn-danger:hover {
+    color: #FF6B6B !important;
+    background: rgba(255, 107, 107, 0.15) !important;
+}
+
+/* ══ TABLE DRAG HANDLE & WRAPPER ══ */
+.ProseMirror table {
+    position: relative;
+    margin: 16px 0;
+    cursor: default;
+}
+
+/* ══ TIPTAP TABLE STYLES ══ */
+.ProseMirror table {
+    border-collapse: collapse;
+    table-layout: fixed;
+    width: auto;
+    min-width: 200px;
+    margin: 12px 0;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    position: relative;
+}
+
+.ProseMirror th,
+.ProseMirror td {
+    min-width: 80px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-default);
+    vertical-align: top;
+    position: relative;
+    font-size: 13px;
+    line-height: 1.5;
+    cursor: text;
+}
+
+.ProseMirror th {
+    background: var(--bg-sidebar);
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: left;
+}
+
+.ProseMirror td {
+    background: var(--bg-editor);
+}
+
+.ProseMirror th p,
+.ProseMirror td p {
+    margin: 0;
+}
+
+/* Selected cell */
+.ProseMirror .selectedCell::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background: rgba(119, 25, 170, 0.12);
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* Column resize handle */
+.ProseMirror .column-resize-handle {
+    position: absolute;
+    right: -2px;
+    top: 0;
+    bottom: -2px;
+    width: 4px;
+    background-color: var(--onenote-purple);
+    cursor: col-resize;
+    z-index: 10;
+}
+
+.ProseMirror.resize-cursor {
+    cursor: col-resize;
+}
+
+.ProseMirror tr:hover td {
+    background: var(--bg-hover);
+}
+
+.ProseMirror tr:hover th {
+    background: var(--bg-selected);
+}
+
+/* ══ TABLE WRAPPER — drag & resize ══ */
+.table-node-wrapper {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    margin: 16px 0;
+    cursor: default;
+}
+
+/* Drag handle top-left */
+.table-drag-handle {
+    position: absolute;
+    top: -22px;
+    left: 0;
+    width: 22px;
+    height: 22px;
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    font-size: 14px;
+    color: var(--text-tertiary);
+    opacity: 0;
+    transition: opacity 0.15s, background 0.12s;
+    z-index: 10;
+    user-select: none;
+}
+
+.table-node-wrapper:hover .table-drag-handle {
+    opacity: 1;
+}
+
+.table-drag-handle:hover {
+    background: var(--onenote-purple-bg);
+    color: var(--onenote-purple);
+    border-color: var(--onenote-purple);
+}
+
+.table-drag-handle:active {
+    cursor: grabbing;
+}
+
+/* Resize handle bottom-right */
+.table-resize-handle {
+    position: absolute;
+    bottom: -6px;
+    right: -6px;
+    width: 14px;
+    height: 14px;
+    background: var(--onenote-purple);
+    border-radius: 50%;
+    cursor: nwse-resize;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 10;
+}
+
+.table-node-wrapper:hover .table-resize-handle {
+    opacity: 1;
+}
+
+.table-resize-handle::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 6px;
+    height: 6px;
+    border-right: 2px solid white;
+    border-bottom: 2px solid white;
+}
+
+/* Dragging state */
+.table-node-wrapper.is-dragging {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+/* Drop indicator */
+.table-drop-before {
+    border-top: 2px solid var(--onenote-purple);
+}
+
+.table-drop-after {
+    border-bottom: 2px solid var(--onenote-purple);
 }

@@ -9,6 +9,12 @@ import TextAlign from '@tiptap/extension-text-align';
 import Highlight from '@tiptap/extension-highlight';
 import DraggableImage from '../extensions/DraggableImage.js';
 import Link from '@tiptap/extension-link';
+import { TableWithWrapper } from '../extensions/TableWrapper.jsx';
+import TableRow from '@tiptap/extension-table-row';
+import TableHeader from '@tiptap/extension-table-header';
+import TableCell from '@tiptap/extension-table-cell';
+import MarkdownInputRules from '../extensions/MarkdownInputRules.js';
+import MarkdownTablePlugin from '../extensions/MarkdownTablePlugin.js';
 import { FileText, Check, RefreshCw, Download, ExternalLink, X, Loader2, Clipboard, RemoveFormatting, FileType, Scissors, Copy, Sparkles } from 'lucide-react';
 import { formatDate } from '../utils/helpers';
 import FindReplaceBar from './FindReplaceBar.jsx';
@@ -40,7 +46,7 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
 
     const editor = useEditor({
         extensions: [
-            StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
+            StarterKit.configure({ heading: { levels: [1, 2, 3, 4] } }),
             Underline,
             Placeholder.configure({ placeholder: 'Empieza a escribir aquí...' }),
             TaskList,
@@ -49,6 +55,12 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
             Highlight.configure({ multicolor: true }),
             DraggableImage.configure({ allowBase64: true }),
             Link.configure({ openOnClick: false, HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer' } }),
+            TableWithWrapper.configure({ resizable: true, allowTableNodeSelection: true, cellMinWidth: 60 }),
+            TableRow,
+            TableHeader,
+            TableCell,
+            MarkdownInputRules,
+            MarkdownTablePlugin,
         ],
         content: page?.content || '',
         onUpdate: ({ editor }) => {
@@ -65,10 +77,18 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
                 const text = clipboardData.getData('text/plain');
 
                 // Check if plain text looks like markdown
-                const looksLikeMarkdown = text && /^#{1,3} |\*\*|^- |^\d+\. |^> |```|\[.+\]\(.+\)/m.test(text);
+                const looksLikeMarkdown = text && /^#{1,4} |\*\*|^- |^\* |^\d+\. |^> |```|\[.+\]\(.+\)|^\|.+\|/m.test(text);
 
-                // Show paste options if there's HTML content or markdown text
-                if ((html && html.trim()) || looksLikeMarkdown) {
+                // If it's pure markdown (no HTML from another app), auto-convert directly
+                if (looksLikeMarkdown && (!html || !html.trim() || html.trim() === text.trim())) {
+                    event.preventDefault();
+                    const converted = markdownToHtml(text);
+                    editor.chain().focus().insertContent(converted).run();
+                    return true;
+                }
+
+                // Show paste options if there's rich HTML content
+                if (html && html.trim()) {
                     event.preventDefault();
 
                     // Store the paste data for later use
@@ -127,14 +147,38 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
         return () => document.removeEventListener('mousedown', handleClose);
     }, [contextMenu]);
 
-    // ── Simple markdown to HTML converter ──
+    // ── Markdown to HTML converter (supports tables, lists, code, etc.) ──
     function markdownToHtml(md) {
-        let html = md
+        // Extract and convert markdown tables first
+        const tableRegex = /(^\|.+\|\s*\n)(^\|[\s:|-]+\|\s*\n)((?:^\|.+\|\s*\n?)*)/gm;
+        let html = md.replace(tableRegex, (match, headerLine, separatorLine, bodyLines) => {
+            // Parse header
+            const headers = headerLine.trim().split('|').filter(c => c.trim() !== '');
+            // Parse alignment from separator
+            const aligns = separatorLine.trim().split('|').filter(c => c.trim() !== '').map(c => {
+                c = c.trim();
+                if (c.startsWith(':') && c.endsWith(':')) return 'center';
+                if (c.endsWith(':')) return 'right';
+                return 'left';
+            });
+            // Build header row
+            const thRow = headers.map((h, i) => `<th style="text-align:${aligns[i] || 'left'}">${h.trim()}</th>`).join('');
+            // Build body rows
+            const rows = bodyLines.trim().split('\n').filter(r => r.trim());
+            const bodyHtml = rows.map(row => {
+                const cells = row.trim().split('|').filter(c => c.trim() !== '');
+                return '<tr>' + cells.map((c, i) => `<td style="text-align:${aligns[i] || 'left'}">${c.trim()}</td>`).join('') + '</tr>';
+            }).join('');
+            return `<table><thead><tr>${thRow}</tr></thead><tbody>${bodyHtml}</tbody></table>`;
+        });
+
+        html = html
             // Code blocks (``` ... ```)
             .replace(/```([\s\S]*?)```/g, (_, code) => `<pre><code>${code.trim()}</code></pre>`)
             // Inline code
             .replace(/`([^`]+)`/g, '<code>$1</code>')
             // Headings
+            .replace(/^#### (.+)$/gm, '<h4>$1</h4>')
             .replace(/^### (.+)$/gm, '<h3>$1</h3>')
             .replace(/^## (.+)$/gm, '<h2>$1</h2>')
             .replace(/^# (.+)$/gm, '<h1>$1</h1>')
@@ -148,17 +192,24 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
             .replace(/_(.+?)_/g, '<em>$1</em>')
             // Strikethrough
             .replace(/~~(.+?)~~/g, '<s>$1</s>')
+            // Highlight ==text==
+            .replace(/==(.+?)==/g, '<mark>$1</mark>')
             // Links
             .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-            // Blockquotes
-            .replace(/^> (.+)$/gm, '<blockquote><p>$1</p></blockquote>')
+            // Images
+            .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" />')
+            // Blockquotes (merge consecutive)
+            .replace(/(^> .+\n?)+/gm, (match) => {
+                const lines = match.trim().split('\n').map(l => l.replace(/^> ?/, '')).join('<br>');
+                return `<blockquote><p>${lines}</p></blockquote>`;
+            })
             // Horizontal rules
             .replace(/^---$/gm, '<hr>')
             .replace(/^\*\*\*$/gm, '<hr>');
 
-        // Unordered lists
-        html = html.replace(/^(- .+\n?)+/gm, (match) => {
-            const items = match.trim().split('\n').map(line => `<li>${line.replace(/^- /, '')}</li>`).join('');
+        // Unordered lists (- or *)
+        html = html.replace(/^([\-\*] .+\n?)+/gm, (match) => {
+            const items = match.trim().split('\n').map(line => `<li>${line.replace(/^[\-\*] /, '')}</li>`).join('');
             return `<ul>${items}</ul>`;
         });
 
@@ -302,8 +353,9 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
     // ── Click below content → append paragraphs ──
     const handleWrapperClick = useCallback((e) => {
         if (!editor) return;
-        // Only handle clicks directly on the wrapper (not on editor content)
         if (e.target.closest('.ProseMirror')) return;
+        // NEW: do not act if click is near a table
+        if (e.target.closest('.table-node-wrapper')) return;
 
         const wrapperRect = e.currentTarget.getBoundingClientRect();
         const clickY = e.clientY - wrapperRect.top + e.currentTarget.scrollTop;
@@ -313,12 +365,9 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
         const editorHeight = editorEl.scrollHeight;
 
         if (clickY > editorHeight) {
-            // Calculate how many empty paragraphs to add
             const linesNeeded = Math.ceil((clickY - editorHeight) / lineHeight);
             let content = '';
-            for (let i = 0; i < linesNeeded; i++) {
-                content += '<p></p>';
-            }
+            for (let i = 0; i < linesNeeded; i++) content += '<p></p>';
             editor.chain().focus('end').insertContent(content).focus('end').run();
         }
     }, [editor]);

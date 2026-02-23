@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ChevronRight, Plus, BookOpen, Trash2, Pencil, FolderPlus, Cloud, CloudOff, RefreshCw } from 'lucide-react';
 import ConfirmDeleteModal from './ConfirmDeleteModal.jsx';
 
@@ -14,6 +14,38 @@ export default function Sidebar({
     const [ctx, setCtx] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
     const renameRef = useRef(null);
+    const [panelWidth, setPanelWidth] = useState(() => {
+        const saved = localStorage.getItem('noteflow-nav-width');
+        return saved ? parseInt(saved, 10) : 260;
+    });
+    const isResizingRef = useRef(false);
+
+    const handleResizeMouseDown = useCallback((e) => {
+        if (window.innerWidth <= 768) return;
+        e.preventDefault();
+        isResizingRef.current = true;
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+
+        const onMouseMove = (ev) => {
+            if (!isResizingRef.current) return;
+            const newWidth = Math.min(500, Math.max(180, ev.clientX));
+            setPanelWidth(newWidth);
+        };
+        const onMouseUp = () => {
+            isResizingRef.current = false;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    }, []);
+
+    useEffect(() => {
+        localStorage.setItem('noteflow-nav-width', String(panelWidth));
+    }, [panelWidth]);
 
     useEffect(() => { if (renamingId && renameRef.current) { renameRef.current.focus(); renameRef.current.select(); } }, [renamingId]);
     useEffect(() => { if (activeNotebookId) setExpandedNbs(p => ({ ...p, [activeNotebookId]: true })); }, [activeNotebookId]);
@@ -37,8 +69,12 @@ export default function Sidebar({
         setCtx(null);
     }
 
+    const panelStyle = !collapsed && window.innerWidth > 768
+        ? { width: panelWidth, minWidth: panelWidth, maxWidth: panelWidth }
+        : {};
+
     return (
-        <aside className={`nav-panel ${collapsed ? 'collapsed' : ''}`}>
+        <aside className={`nav-panel ${collapsed ? 'collapsed' : ''}`} style={panelStyle}>
             <div className="nav-header">
                 <h2><BookOpen size={15} /> Notebooks</h2>
             </div>
@@ -110,6 +146,7 @@ export default function Sidebar({
                     onCancel={() => setDeleteConfirm(null)}
                 />
             )}
+            {!collapsed && <div className="panel-resize-handle" onMouseDown={handleResizeMouseDown} />}
         </aside>
     );
 }
