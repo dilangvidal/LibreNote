@@ -9,13 +9,16 @@ import TextAlign from '@tiptap/extension-text-align';
 import Highlight from '@tiptap/extension-highlight';
 import DraggableImage from '../extensions/DraggableImage.js';
 import Link from '@tiptap/extension-link';
-import { FileText, Check, RefreshCw, Download, ExternalLink, X, Loader2 } from 'lucide-react';
+import { FileText, Check, RefreshCw, Download, ExternalLink, X, Loader2, Clipboard, RemoveFormatting, FileType } from 'lucide-react';
 import { formatDate } from '../utils/helpers';
 
 export default function EditorArea({ page, onTitleChange, onContentChange, onEditorReady, syncStatus, onSlashSearch, api, gdriveConnected }) {
     const [linkPopup, setLinkPopup] = useState(null);
     const [linkDownloading, setLinkDownloading] = useState(false);
+    const [pastePopup, setPastePopup] = useState(null);
     const popupRef = useRef(null);
+    const pastePopupRef = useRef(null);
+    const pendingPasteRef = useRef(null);
 
     const editor = useEditor({
         extensions: [
@@ -40,14 +43,45 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
                 if (onSlashSearch) onSlashSearch();
             }
         },
-        editorProps: { attributes: { spellcheck: 'true' } },
+        editorProps: {
+            attributes: { spellcheck: 'true' },
+            handlePaste: (view, event, slice) => {
+                const clipboardData = event.clipboardData;
+                if (!clipboardData) return false;
+
+                const html = clipboardData.getData('text/html');
+                const text = clipboardData.getData('text/plain');
+
+                // Only show paste options if there's HTML content (formatted paste)
+                if (html && html.trim()) {
+                    event.preventDefault();
+
+                    // Store the paste data for later use
+                    pendingPasteRef.current = { html, text };
+
+                    // Get cursor position for popup
+                    const coords = view.coordsAtPos(view.state.selection.from);
+                    const wrapperEl = view.dom.closest('.editor-wrapper');
+                    const wrapperRect = wrapperEl?.getBoundingClientRect();
+
+                    setPastePopup({
+                        x: coords.left - (wrapperRect?.left || 0),
+                        y: coords.bottom - (wrapperRect?.top || 0) + 8,
+                    });
+
+                    return true; // Prevent default paste
+                }
+
+                return false; // Let Tiptap handle plain text paste normally
+            },
+        },
     });
 
     useEffect(() => { if (editor && onEditorReady) onEditorReady(editor); }, [editor, onEditorReady]);
     useEffect(() => { if (editor && page) { const cur = editor.getHTML(); if (cur !== page.content) editor.commands.setContent(page.content || '', false); } }, [editor, page?.id]);
     useEffect(() => () => { if (onEditorReady) onEditorReady(null); }, []);
 
-    // Close popup on outside click
+    // Close popups on outside click
     useEffect(() => {
         if (!linkPopup) return;
         const handleClickOutside = (e) => {
@@ -58,6 +92,50 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [linkPopup]);
+
+    useEffect(() => {
+        if (!pastePopup) return;
+        const handleClickOutside = (e) => {
+            if (pastePopupRef.current && !pastePopupRef.current.contains(e.target)) {
+                // Auto-apply "keep original" if clicked outside
+                handlePasteKeepOriginal();
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [pastePopup]);
+
+    // ── Paste option handlers ──
+    function handlePasteKeepOriginal() {
+        if (!editor || !pendingPasteRef.current) { setPastePopup(null); return; }
+        const { html } = pendingPasteRef.current;
+        editor.chain().focus().insertContent(html).run();
+        pendingPasteRef.current = null;
+        setPastePopup(null);
+    }
+
+    function handlePasteMergeFormat() {
+        if (!editor || !pendingPasteRef.current) { setPastePopup(null); return; }
+        const { html } = pendingPasteRef.current;
+        // Strip inline styles but keep structural HTML (bold, italic, lists, etc.)
+        const cleaned = html
+            .replace(/\s*style="[^"]*"/gi, '')
+            .replace(/\s*class="[^"]*"/gi, '')
+            .replace(/<font[^>]*>/gi, '')
+            .replace(/<\/font>/gi, '')
+            .replace(/<span[^>]*>(.*?)<\/span>/gi, '$1');
+        editor.chain().focus().insertContent(cleaned).run();
+        pendingPasteRef.current = null;
+        setPastePopup(null);
+    }
+
+    function handlePastePlainText() {
+        if (!editor || !pendingPasteRef.current) { setPastePopup(null); return; }
+        const { text } = pendingPasteRef.current;
+        editor.chain().focus().insertContent(text || '').run();
+        pendingPasteRef.current = null;
+        setPastePopup(null);
+    }
 
     // ── Click on Drive links → show action popup ──
     const handleEditorClick = useCallback((e) => {
@@ -177,6 +255,8 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
             </div>
             <div className="editor-wrapper ruled" onClick={(e) => { handleEditorClick(e); handleWrapperClick(e); }} style={{ position: 'relative', cursor: 'text' }}>
                 <EditorContent editor={editor} />
+
+                {/* Drive link popup */}
                 {linkPopup && (
                     <div className="file-action-popup" ref={popupRef} style={{ left: linkPopup.x, top: linkPopup.y }}>
                         <div className="file-action-popup-header">
@@ -191,6 +271,27 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
                             <button className="file-action-btn" onClick={handlePopupViewOnline}>
                                 <ExternalLink size={14} />
                                 <span>Ver en el navegador</span>
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Paste options popup */}
+                {pastePopup && (
+                    <div className="paste-options-popup" ref={pastePopupRef} style={{ left: pastePopup.x, top: pastePopup.y }}>
+                        <div className="paste-options-label">Opciones de pegado</div>
+                        <div className="paste-options-btns">
+                            <button className="paste-option-btn" onClick={handlePasteKeepOriginal} title="Mantener formato de origen">
+                                <Clipboard size={16} />
+                                <span>Mantener formato</span>
+                            </button>
+                            <button className="paste-option-btn" onClick={handlePasteMergeFormat} title="Combinar formato">
+                                <FileType size={16} />
+                                <span>Combinar formato</span>
+                            </button>
+                            <button className="paste-option-btn" onClick={handlePastePlainText} title="Solo texto">
+                                <RemoveFormatting size={16} />
+                                <span>Solo texto</span>
                             </button>
                         </div>
                     </div>
