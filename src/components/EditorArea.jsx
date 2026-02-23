@@ -48,12 +48,15 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
                 const html = clipboardData.getData('text/html');
                 const text = clipboardData.getData('text/plain');
 
-                // Only show paste options if there's HTML content (formatted paste)
-                if (html && html.trim()) {
+                // Check if plain text looks like markdown
+                const looksLikeMarkdown = text && /^#{1,3} |\*\*|^- |^\d+\. |^> |```|\[.+\]\(.+\)/m.test(text);
+
+                // Show paste options if there's HTML content or markdown text
+                if ((html && html.trim()) || looksLikeMarkdown) {
                     event.preventDefault();
 
                     // Store the paste data for later use
-                    pendingPasteRef.current = { html, text };
+                    pendingPasteRef.current = { html: html || '', text };
 
                     // Get cursor position for popup
                     const coords = view.coordsAtPos(view.state.selection.from);
@@ -62,13 +65,13 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
 
                     setPastePopup({
                         x: coords.left - (wrapperRect?.left || 0),
-                        y: coords.bottom - (wrapperRect?.top || 0) + 8,
+                        y: coords.bottom - (wrapperRect?.top || 0) + (wrapperEl?.scrollTop || 0) + 8,
                     });
 
-                    return true; // Prevent default paste
+                    return true;
                 }
 
-                return false; // Let Tiptap handle plain text paste normally
+                return false;
             },
         },
     });
@@ -330,10 +333,11 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
             </div>
             <div className="editor-wrapper ruled" onClick={(e) => { handleEditorClick(e); handleWrapperClick(e); }} onContextMenu={(e) => {
                 e.preventDefault();
-                const wrapperRect = e.currentTarget.getBoundingClientRect();
+                const wrapperEl = e.currentTarget;
+                const wrapperRect = wrapperEl.getBoundingClientRect();
                 setContextMenu({
                     x: e.clientX - wrapperRect.left,
-                    y: e.clientY - wrapperRect.top,
+                    y: e.clientY - wrapperRect.top + wrapperEl.scrollTop,
                 });
             }} style={{ position: 'relative', cursor: 'text' }}>
                 <EditorContent editor={editor} />
