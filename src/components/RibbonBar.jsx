@@ -93,7 +93,6 @@ export default function RibbonBar({ editor, onOpenDriveSearch, gdriveConnected, 
 
                         <div className="ribbon-group">
                             <select className="ribbon-select"
-                                onMouseDown={noFocusLoss}
                                 value={editor.isActive('heading', { level: 1 }) ? 'h1' : editor.isActive('heading', { level: 2 }) ? 'h2' : editor.isActive('heading', { level: 3 }) ? 'h3' : 'p'}
                                 onChange={e => { const v = e.target.value; if (v === 'p') editor.chain().focus().setParagraph().run(); else editor.chain().focus().toggleHeading({ level: parseInt(v[1]) }).run(); }}>
                                 <option value="p">Normal</option><option value="h1">Título 1</option><option value="h2">Título 2</option><option value="h3">Título 3</option>

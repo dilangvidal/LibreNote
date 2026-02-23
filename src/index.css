@@ -1971,3 +1971,111 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+/* ══ FIND & REPLACE BAR ══ */
+.find-replace-bar {
+    background: var(--bg-sidebar);
+    border-bottom: 1px solid var(--border-default);
+    padding: 6px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    animation: slideDown 0.15s ease;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.find-replace-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.find-icon {
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+}
+
+.find-input {
+    flex: 1;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    padding: 4px 8px;
+    font-size: 13px;
+    font-family: inherit;
+    background: var(--bg-editor);
+    color: var(--text-primary);
+    outline: none;
+    min-width: 0;
+}
+
+.find-input:focus {
+    border-color: var(--onenote-purple);
+    box-shadow: 0 0 0 2px rgba(119, 25, 170, 0.15);
+}
+
+.find-count {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    min-width: 32px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.find-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 4px;
+    border-radius: var(--radius-sm);
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.find-btn:hover:not(:disabled) {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.find-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.replace-btn {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 8px;
+    background: var(--bg-hover);
+    font-family: inherit;
+}
+
+.replace-btn:hover:not(:disabled) {
+    background: var(--onenote-purple);
+    color: white;
+}
+
+/* Find highlights */
+.find-highlight {
+    background: rgba(255, 235, 59, 0.45);
+    border-radius: 2px;
+}
+
+.find-highlight-active {
+    background: rgba(255, 152, 0, 0.6);
+    border-radius: 2px;
+    outline: 2px solid rgba(255, 152, 0, 0.8);
+}

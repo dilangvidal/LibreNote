@@ -11,16 +11,30 @@ import DraggableImage from '../extensions/DraggableImage.js';
 import Link from '@tiptap/extension-link';
 import { FileText, Check, RefreshCw, Download, ExternalLink, X, Loader2, Clipboard, RemoveFormatting, FileType, Scissors, Copy } from 'lucide-react';
 import { formatDate } from '../utils/helpers';
+import FindReplaceBar from './FindReplaceBar.jsx';
 
 export default function EditorArea({ page, onTitleChange, onContentChange, onEditorReady, syncStatus, api, gdriveConnected }) {
     const [linkPopup, setLinkPopup] = useState(null);
     const [linkDownloading, setLinkDownloading] = useState(false);
     const [pastePopup, setPastePopup] = useState(null);
     const [contextMenu, setContextMenu] = useState(null);
+    const [showFindReplace, setShowFindReplace] = useState(false);
     const popupRef = useRef(null);
     const pastePopupRef = useRef(null);
     const contextMenuRef = useRef(null);
     const pendingPasteRef = useRef(null);
+
+    // Ctrl+F / Cmd+F to open find bar
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                setShowFindReplace(true);
+            }
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     const editor = useEditor({
         extensions: [
@@ -331,6 +345,9 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
                     {syncStatus === 'success' && <span style={{ color: '#107C10', display: 'flex', alignItems: 'center', gap: 4 }}><Check size={11} /> Guardado</span>}
                 </div>
             </div>
+            {showFindReplace && editor && (
+                <FindReplaceBar editor={editor} onClose={() => setShowFindReplace(false)} />
+            )}
             <div className="editor-wrapper ruled" onClick={(e) => { handleEditorClick(e); handleWrapperClick(e); }} onContextMenu={(e) => {
                 e.preventDefault();
                 const wrapperEl = e.currentTarget;
