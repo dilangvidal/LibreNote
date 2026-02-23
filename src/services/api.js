@@ -35,7 +35,25 @@ const browserStorage = {
     gdriveUploadFile: async () => ({ success: false }),
     gdriveDownloadFile: async () => ({ success: false }),
 
-    // ── File operations (stubs para navegador) ──
+    // Config
+    getGeminiKey: async () => localStorage.getItem('librenote-gemini-key') || '',
+    setGeminiKey: async (key) => { localStorage.setItem('librenote-gemini-key', key); return true; },
+
+    // Gemini AI (browser fallback — calls API directly)
+    geminiChat: async (prompt, pageContext, selectedText) => {
+        const apiKey = localStorage.getItem('librenote-gemini-key');
+        if (!apiKey) return { success: false, error: 'No se ha configurado la API key de Gemini.' };
+        try {
+            const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: `${prompt}\n\nContexto: ${pageContext || ''}\n\nSelección: ${selectedText || ''}` }] }] }),
+            });
+            const data = await resp.json();
+            return { success: true, text: data?.candidates?.[0]?.content?.parts?.[0]?.text || '' };
+        } catch (e) { return { success: false, error: e.message }; }
+    },
+
+    // File operations (stubs para navegador)
     pickImage: async () => null,
     pickFile: async () => null,
     openLocalFile: async () => false,

@@ -1,11 +1,22 @@
 import React, { useState } from 'react';
-import { Settings, Cloud, CloudOff, Info, Loader, Sun, Moon, Monitor } from 'lucide-react';
+import { Settings, Cloud, CloudOff, Info, Loader, Sun, Moon, Monitor, Sparkles, Eye, EyeOff, Key } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext.jsx';
 
 export default function SettingsModal({ gdriveConnected, onConnect, onDisconnect, onClose }) {
     const [activeTab, setActiveTab] = useState('gdrive');
     const [connecting, setConnecting] = useState(false);
     const { theme, setTheme, resolvedTheme } = useTheme();
+    const [geminiKey, setGeminiKey] = useState('');
+    const [showKey, setShowKey] = useState(false);
+    const [keySaved, setKeySaved] = useState(false);
+
+    // Load Gemini key on mount
+    React.useEffect(() => {
+        const api = window.librenote;
+        if (api?.getGeminiKey) {
+            api.getGeminiKey().then(k => setGeminiKey(k || ''));
+        }
+    }, []);
 
     async function handleConnect() {
         setConnecting(true);
@@ -36,6 +47,9 @@ export default function SettingsModal({ gdriveConnected, onConnect, onDisconnect
                     </button>
                     <button className={`btn ${activeTab === 'about' ? 'btn-primary' : 'btn-ghost'} btn-sm`} onClick={() => setActiveTab('about')}>
                         <Info size={12} /> Acerca de
+                    </button>
+                    <button className={`btn ${activeTab === 'gemini' ? 'btn-primary' : 'btn-ghost'} btn-sm`} onClick={() => setActiveTab('gemini')}>
+                        <Sparkles size={12} /> Gemini AI
                     </button>
                 </div>
 
@@ -109,14 +123,52 @@ export default function SettingsModal({ gdriveConnected, onConnect, onDisconnect
 
                 {activeTab === 'about' && (
                     <div style={{ textAlign: 'center', padding: 16 }}>
-                        <div style={{ fontSize: 40, marginBottom: 8, color: 'var(--onenote-purple)' }}><Cloud size={48} /></div>
-                        <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--onenote-purple)', marginBottom: 4 }}>NoteFlow</h3>
-                        <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12 }}>Versión 1.0.0</p>
+                        <div style={{ fontSize: 40, marginBottom: 8, color: 'var(--onenote-purple)' }}><Sparkles size={48} /></div>
+                        <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--onenote-purple)', marginBottom: 4 }}>LibreNote</h3>
+                        <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12 }}>Versión 3.1.0</p>
                         <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                            Aplicación de notas estilo OneNote para Mac, con editor de texto enriquecido y sincronización a Google Drive.
+                            Aplicación de notas estilo OneNote para Mac, con editor de texto enriquecido, sincronización a Google Drive e integración con Gemini AI.
                         </p>
                         <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 16 }}>
                             Desarrollado con Electron + React + TipTap
+                        </p>
+                    </div>
+                )}
+
+                {activeTab === 'gemini' && (
+                    <div>
+                        <div style={{ padding: 14, background: 'var(--bg-app)', borderRadius: 'var(--radius-md)', marginBottom: 14, border: '1px solid var(--border-default)' }}>
+                            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <Sparkles size={14} /> Gemini API Key
+                            </div>
+                            <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 12 }}>
+                                Ingresa tu API key de Google Gemini para habilitar la asistencia de IA en el editor. Puedes obtener una en <a href="https://aistudio.google.com/apikey" style={{ color: 'var(--onenote-purple)' }} target="_blank" rel="noreferrer">Google AI Studio</a>.
+                            </p>
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                <div style={{ flex: 1, position: 'relative' }}>
+                                    <input
+                                        type={showKey ? 'text' : 'password'}
+                                        value={geminiKey}
+                                        onChange={e => { setGeminiKey(e.target.value); setKeySaved(false); }}
+                                        placeholder="AIza..."
+                                        style={{ width: '100%', padding: '8px 36px 8px 10px', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', fontSize: 13, fontFamily: 'monospace', background: 'var(--bg-editor)', color: 'var(--text-primary)' }}
+                                    />
+                                    <button onClick={() => setShowKey(!showKey)} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 2 }}>
+                                        {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                                    </button>
+                                </div>
+                                <button className="btn btn-primary btn-sm" onClick={async () => {
+                                    const api = window.librenote;
+                                    if (api?.setGeminiKey) { await api.setGeminiKey(geminiKey); }
+                                    setKeySaved(true);
+                                    setTimeout(() => setKeySaved(false), 2000);
+                                }}>
+                                    <Key size={12} /> {keySaved ? '¡Guardada!' : 'Guardar'}
+                                </button>
+                            </div>
+                        </div>
+                        <p style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.6 }}>
+                            Haz clic derecho en el editor y selecciona "Ayuda de Gemini" para usar la IA. Tu API key se almacena localmente.
                         </p>
                     </div>
                 )}

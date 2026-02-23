@@ -21,4 +21,11 @@ contextBridge.exposeInMainWorld('librenote', {
     gdriveSearchFiles: (query) => ipcRenderer.invoke('gdrive:search-files', query),
     gdriveGetFileUrl: (fileId) => ipcRenderer.invoke('gdrive:get-file-url', fileId),
     gdriveDownloadFile: (fileId, fileName) => ipcRenderer.invoke('gdrive:download-file', fileId, fileName),
+
+    // Config
+    getGeminiKey: () => ipcRenderer.invoke('config:get-gemini-key'),
+    setGeminiKey: (key) => ipcRenderer.invoke('config:set-gemini-key', key),
+
+    // Gemini AI
+    geminiChat: (prompt, pageContext, selectedText) => ipcRenderer.invoke('gemini:chat', prompt, pageContext, selectedText),
 });

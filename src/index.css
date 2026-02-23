@@ -2079,3 +2079,212 @@ body {
     border-radius: 2px;
     outline: 2px solid rgba(255, 152, 0, 0.8);
 }
+
+/* ══ GEMINI AI PANEL ══ */
+.gemini-panel {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    width: 380px;
+    max-height: 500px;
+    background: var(--bg-editor);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    z-index: 400;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: slideUp 0.2s ease;
+}
+
+.gemini-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, #7719AA 0%, #4285F4 100%);
+    color: white;
+}
+
+.gemini-panel-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.gemini-panel-title .gemini-icon {
+    animation: geminiPulse 2s ease-in-out infinite;
+}
+
+@keyframes geminiPulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
+}
+
+.gemini-panel-header .find-btn {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.gemini-panel-header .find-btn:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.gemini-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-default);
+}
+
+.gemini-suggestion-btn {
+    padding: 3px 10px;
+    font-size: 11px;
+    border: 1px solid var(--border-default);
+    border-radius: 99px;
+    background: var(--bg-app);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-family: inherit;
+}
+
+.gemini-suggestion-btn:hover {
+    background: var(--onenote-purple);
+    color: white;
+    border-color: var(--onenote-purple);
+}
+
+.gemini-input-area {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-default);
+}
+
+.gemini-input {
+    flex: 1;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    background: var(--bg-app);
+    color: var(--text-primary);
+    resize: none;
+    outline: none;
+    min-height: 36px;
+    max-height: 80px;
+}
+
+.gemini-input:focus {
+    border-color: var(--onenote-purple);
+    box-shadow: 0 0 0 2px rgba(119, 25, 170, 0.15);
+}
+
+.gemini-send-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #7719AA, #4285F4);
+    color: white;
+    cursor: pointer;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.gemini-send-btn:hover:not(:disabled) {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(119, 25, 170, 0.3);
+}
+
+.gemini-send-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.gemini-error {
+    padding: 8px 12px;
+    font-size: 12px;
+    color: #d32f2f;
+    background: rgba(211, 47, 47, 0.08);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.gemini-response-area {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.gemini-response {
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text-primary);
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.gemini-response h1,
+.gemini-response h2,
+.gemini-response h3 {
+    margin: 10px 0 6px;
+    color: var(--onenote-purple);
+}
+
+.gemini-response p {
+    margin: 0 0 8px;
+}
+
+.gemini-response ul,
+.gemini-response ol {
+    margin: 4px 0 8px 16px;
+}
+
+.gemini-response code {
+    background: var(--bg-app);
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.gemini-response-actions {
+    display: flex;
+    gap: 6px;
+    padding: 8px 12px;
+    border-top: 1px solid var(--border-default);
+    background: var(--bg-sidebar);
+}
+
+.gemini-response-actions .btn {
+    font-size: 11px;
+}
+
+/* Gemini context menu highlight */
+.gemini-ctx-item {
+    color: var(--onenote-purple) !important;
+}
+
+.gemini-ctx-item svg {
+    color: var(--onenote-purple) !important;
+}

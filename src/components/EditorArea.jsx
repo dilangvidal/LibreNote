@@ -9,9 +9,10 @@ import TextAlign from '@tiptap/extension-text-align';
 import Highlight from '@tiptap/extension-highlight';
 import DraggableImage from '../extensions/DraggableImage.js';
 import Link from '@tiptap/extension-link';
-import { FileText, Check, RefreshCw, Download, ExternalLink, X, Loader2, Clipboard, RemoveFormatting, FileType, Scissors, Copy } from 'lucide-react';
+import { FileText, Check, RefreshCw, Download, ExternalLink, X, Loader2, Clipboard, RemoveFormatting, FileType, Scissors, Copy, Sparkles } from 'lucide-react';
 import { formatDate } from '../utils/helpers';
 import FindReplaceBar from './FindReplaceBar.jsx';
+import GeminiPanel from './GeminiPanel.jsx';
 
 export default function EditorArea({ page, onTitleChange, onContentChange, onEditorReady, syncStatus, api, gdriveConnected }) {
     const [linkPopup, setLinkPopup] = useState(null);
@@ -19,6 +20,7 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
     const [pastePopup, setPastePopup] = useState(null);
     const [contextMenu, setContextMenu] = useState(null);
     const [showFindReplace, setShowFindReplace] = useState(false);
+    const [showGemini, setShowGemini] = useState(false);
     const popupRef = useRef(null);
     const pastePopupRef = useRef(null);
     const contextMenuRef = useRef(null);
@@ -429,7 +431,16 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
                         }}>
                             <RemoveFormatting size={14} /><span>Pegar sin formato</span>
                         </button>
+                        <div className="context-menu-divider" />
+                        <button className="context-menu-item gemini-ctx-item" onClick={() => { setContextMenu(null); setShowGemini(true); }}>
+                            <Sparkles size={14} /><span>Ayuda de Gemini</span>
+                        </button>
                     </div>
+                )}
+
+                {/* Gemini AI Panel */}
+                {showGemini && editor && (
+                    <GeminiPanel editor={editor} onClose={() => setShowGemini(false)} />
                 )}
             </div>
         </div>

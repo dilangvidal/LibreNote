@@ -4,6 +4,8 @@ const fs = require('fs');
 const { initGDrive, handleGDriveAuth, syncToGDrive, syncFromGDrive, isAuthenticated, logout, uploadFileToDrive, searchDriveFiles, getFileUrl, downloadDriveFile } = require('./gdrive');
 
 const DATA_DIR = path.join(app.getPath('home'), 'LibreNoteData', 'notebooks');
+const CONFIG_DIR = path.join(app.getPath('home'), 'LibreNoteData');
+const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 
 function ensureDataDir() {
     if (!fs.existsSync(DATA_DIR)) {
@@ -174,6 +176,81 @@ ipcMain.handle('gdrive:get-file-url', async (_event, fileId) => {
 
 ipcMain.handle('gdrive:download-file', async (_event, fileId, fileName) => {
     return await downloadDriveFile(fileId, fileName);
+});
+
+// ── IPC: Config (API keys) ──
+function loadConfig() {
+    try {
+        if (fs.existsSync(CONFIG_FILE)) {
+            return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+        }
+    } catch (e) { console.error('[Config] Error loading:', e); }
+    return {};
+}
+
+function saveConfig(config) {
+    try {
+        if (!fs.existsSync(CONFIG_DIR)) fs.mkdirSync(CONFIG_DIR, { recursive: true });
+        fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
+    } catch (e) { console.error('[Config] Error saving:', e); }
+}
+
+ipcMain.handle('config:get-gemini-key', async () => {
+    const config = loadConfig();
+    return config.geminiApiKey || '';
+});
+
+ipcMain.handle('config:set-gemini-key', async (_event, key) => {
+    const config = loadConfig();
+    config.geminiApiKey = key;
+    saveConfig(config);
+    return true;
+});
+
+// ── IPC: Gemini AI ──
+ipcMain.handle('gemini:chat', async (_event, prompt, pageContext, selectedText) => {
+    try {
+        const config = loadConfig();
+        const apiKey = config.geminiApiKey;
+        if (!apiKey) return { success: false, error: 'No se ha configurado la API key de Gemini. Ve a Configuración → Gemini AI.' };
+
+        const systemInstruction = `Eres un asistente de escritura integrado en LibreNote, una aplicación de notas. Tu rol es ayudar al usuario a mejorar, expandir, resumir, traducir o generar contenido basándote en el contexto de su página.
+
+IMPORTANTE: Responde SIEMPRE en el mismo idioma que el contenido de la página. Si la página está en español, responde en español. Si está en inglés, responde en inglés.
+
+Devuelve tu respuesta en HTML listo para insertar en el editor (usa <p>, <strong>, <em>, <h2>, <h3>, <ul>, <li>, etc). NO uses markdown.`;
+
+        let userMessage = prompt;
+        if (selectedText) {
+            userMessage += `\n\nTexto seleccionado:\n"""${selectedText}"""\n`;
+        }
+        if (pageContext) {
+            userMessage += `\n\nContexto completo de la página:\n"""${pageContext}"""\n`;
+        }
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                system_instruction: { parts: [{ text: systemInstruction }] },
+                contents: [{ parts: [{ text: userMessage }] }],
+                generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
+            }),
+        });
+
+        if (!response.ok) {
+            const err = await response.text();
+            console.error('[Gemini] API error:', err);
+            return { success: false, error: `Error de API (${response.status}): Verifica tu API key.` };
+        }
+
+        const data = await response.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        return { success: true, text };
+    } catch (e) {
+        console.error('[Gemini] Error:', e);
+        return { success: false, error: `Error de conexión: ${e.message}` };
+    }
 });
 
 // ── App lifecycle ──
