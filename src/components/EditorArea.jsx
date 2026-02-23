@@ -12,7 +12,7 @@ import Link from '@tiptap/extension-link';
 import { FileText, Check, RefreshCw, Download, ExternalLink, X, Loader2, Clipboard, RemoveFormatting, FileType } from 'lucide-react';
 import { formatDate } from '../utils/helpers';
 
-export default function EditorArea({ page, onTitleChange, onContentChange, onEditorReady, syncStatus, onSlashSearch, api, gdriveConnected }) {
+export default function EditorArea({ page, onTitleChange, onContentChange, onEditorReady, syncStatus, api, gdriveConnected }) {
     const [linkPopup, setLinkPopup] = useState(null);
     const [linkDownloading, setLinkDownloading] = useState(false);
     const [pastePopup, setPastePopup] = useState(null);
@@ -24,7 +24,7 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
         extensions: [
             StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
             Underline,
-            Placeholder.configure({ placeholder: 'Empieza a escribir aquí... (escribe /search para buscar en Drive)' }),
+            Placeholder.configure({ placeholder: 'Empieza a escribir aquí...' }),
             TaskList,
             TaskItem.configure({ nested: true }),
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
@@ -36,12 +36,6 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
         onUpdate: ({ editor }) => {
             const html = editor.getHTML();
             if (onContentChange) onContentChange(html);
-            const text = editor.getText();
-            if (text.endsWith('/search')) {
-                const { from } = editor.state.selection;
-                editor.chain().focus().deleteRange({ from: from - 7, to: from }).run();
-                if (onSlashSearch) onSlashSearch();
-            }
         },
         editorProps: {
             attributes: { spellcheck: 'true' },

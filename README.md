@@ -26,9 +26,10 @@
 - ☁️ **Sincronización con Google Drive** — Sube, descarga y elimina notebooks automáticamente
 - 🌙 **Modo oscuro / claro** — Detecta el sistema o configúralo manualmente
 - 📎 **Archivos adjuntos** — Inserta imágenes y archivos con upload a Drive
-- 🔍 **Búsqueda en Drive** — Escribe `/search` en el editor para buscar archivos de Google Drive
+- 🔍 **Búsqueda en Drive** — Botón "Drive" en la pestaña Inicio para buscar e insertar archivos de Google Drive
 - 📥 **Vista dual de archivos** — Descarga y abre local, o visualiza en el navegador
-- 🔗 **Enlaces clicables** — Los enlaces insertados se abren directamente en el navegador
+- 📋 **Opciones de pegado** — Al pegar contenido formateado: mantener formato, combinar o solo texto
+- 🧹 **Quitar formato** — Botón en la barra de Inicio para limpiar el formato del texto seleccionado
 - 🖼️ **Imágenes arrastrables** — Arrastra y redimensiona imágenes dentro de la página
 - ✍️ **Escribe en cualquier parte** — Haz clic en cualquier lugar de la página para empezar a escribir
 - ⚠️ **Confirmación de eliminación** — Modal de confirmación con advertencia de sincronización en la nube

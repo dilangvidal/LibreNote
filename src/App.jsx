@@ -106,7 +106,7 @@ export default function App() {
                 />
                 <EditorArea page={nb.activePage} onTitleChange={nb.updatePageTitle} onContentChange={nb.updatePageContent}
                     onEditorReady={e => setEditorRef(e)} syncStatus={gdrive.syncStatus}
-                    onSlashSearch={() => setShowDriveSearch(true)} api={api} gdriveConnected={gdrive.gdriveConnected}
+                    api={api} gdriveConnected={gdrive.gdriveConnected}
                 />
             </div>
 

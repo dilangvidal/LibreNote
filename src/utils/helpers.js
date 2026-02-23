@@ -25,7 +25,7 @@ export function createDefaultNotebook() {
             pages: [{
                 id: pageId,
                 title: 'Bienvenido a LibreNote',
-                content: '<h1>Bienvenido a LibreNote</h1><p>Tu espacio para capturar ideas, organizar pensamientos y crear contenido.</p><h2>Características</h2><ul><li>Editor de texto enriquecido con formato profesional</li><li>Notebooks organizados en secciones y páginas</li><li>Sincronización con Google Drive</li><li>Interfaz estilo Microsoft OneNote</li></ul><h2>Empezar</h2><p>Crea una nueva página o notebook desde el panel lateral. Usa <strong>/search</strong> en el editor para buscar archivos en Drive.</p>',
+                content: '<h1>Bienvenido a LibreNote</h1><p>Tu espacio para capturar ideas, organizar pensamientos y crear contenido.</p><h2>Características</h2><ul><li>Editor de texto enriquecido con formato profesional</li><li>Notebooks organizados en secciones y páginas</li><li>Sincronización con Google Drive</li><li>Interfaz estilo Microsoft OneNote</li></ul><h2>Empezar</h2><p>Crea una nueva página o notebook desde el panel lateral. Usa el botón <strong>Drive</strong> en la pestaña Inicio para buscar archivos en Google Drive.</p>',
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
             }],

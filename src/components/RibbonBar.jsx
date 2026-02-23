@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bold, Italic, Underline, Strikethrough, Highlighter, List, ListOrdered, CheckSquare, AlignLeft, AlignCenter, AlignRight, Quote, Code, Minus, Undo2, Redo2, Image, Paperclip, FileSearch, Clipboard, Scissors, Copy, RemoveFormatting } from 'lucide-react';
+import { Bold, Italic, Underline, Strikethrough, Highlighter, List, ListOrdered, CheckSquare, AlignLeft, AlignCenter, AlignRight, Quote, Code, Minus, Undo2, Redo2, Image, Paperclip, Search, Clipboard, Scissors, Copy, RemoveFormatting } from 'lucide-react';
 
 export default function RibbonBar({ editor, onOpenDriveSearch, gdriveConnected, api }) {
     const [activeTab, setActiveTab] = useState('home');
@@ -126,6 +126,12 @@ export default function RibbonBar({ editor, onOpenDriveSearch, gdriveConnected, 
                             <button className={cls(editor.isActive('codeBlock'))} onMouseDown={noFocusLoss} onClick={() => editor.chain().focus().toggleCodeBlock().run()} title="Código"><Code size={15} /></button>
                             <button className="ribbon-btn" onMouseDown={noFocusLoss} onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Línea"><Minus size={15} /></button>
                         </div>
+
+                        {gdriveConnected && (
+                            <div className="ribbon-group">
+                                <button className="ribbon-btn" onClick={onOpenDriveSearch} title="Buscar en Drive"><Search size={15} /><span className="label">Drive</span></button>
+                            </div>
+                        )}
 
                         <div className="ribbon-group" style={{ marginLeft: 'auto' }}>
                             <button className="ribbon-btn" onMouseDown={noFocusLoss} onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title="Deshacer"><Undo2 size={15} /></button>
