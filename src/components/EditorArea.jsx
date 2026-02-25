@@ -15,6 +15,7 @@ import TableHeader from '@tiptap/extension-table-header';
 import TableCell from '@tiptap/extension-table-cell';
 import MarkdownInputRules from '../extensions/MarkdownInputRules.js';
 import MarkdownTablePlugin from '../extensions/MarkdownTablePlugin.js';
+import SearchHighlight from '../extensions/SearchHighlight.js';
 import { FileText, Check, RefreshCw, Download, ExternalLink, X, Loader2, Clipboard, RemoveFormatting, FileType, Scissors, Copy, Sparkles } from 'lucide-react';
 import { formatDate } from '../utils/helpers';
 import FindReplaceBar from './FindReplaceBar.jsx';
@@ -61,6 +62,7 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
             TableCell,
             MarkdownInputRules,
             MarkdownTablePlugin,
+            SearchHighlight,
         ],
         content: page?.content || '',
         onUpdate: ({ editor }) => {

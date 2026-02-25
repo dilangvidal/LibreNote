@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, X, ChevronDown, ChevronUp, Replace, ReplaceAll } from 'lucide-react';
+import { setSearchHighlight, clearSearchHighlight, getMatchPosition } from '../extensions/SearchHighlight.js';
 
 export default function FindReplaceBar({ editor, onClose }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [replaceTerm, setReplaceTerm] = useState('');
     const [showReplace, setShowReplace] = useState(false);
-    const [matches, setMatches] = useState([]);
+    const [matchCount, setMatchCount] = useState(0);
     const [currentIndex, setCurrentIndex] = useState(0);
     const searchRef = useRef(null);
 
@@ -13,214 +14,117 @@ export default function FindReplaceBar({ editor, onClose }) {
         if (searchRef.current) searchRef.current.focus();
     }, []);
 
-    // Find all matches when search term changes
+    // Update highlights when search term changes
     useEffect(() => {
-        if (!editor || !searchTerm) {
-            setMatches([]);
+        if (!editor) return;
+
+        if (!searchTerm) {
+            clearSearchHighlight(editor);
+            setMatchCount(0);
             setCurrentIndex(0);
-            clearHighlights();
             return;
         }
 
-        const text = editor.getText();
-        const query = searchTerm.toLowerCase();
-        const found = [];
-        let idx = 0;
+        const count = setSearchHighlight(editor, searchTerm, 0);
+        setMatchCount(count);
+        setCurrentIndex(count > 0 ? 0 : -1);
 
-        while (true) {
-            const pos = text.toLowerCase().indexOf(query, idx);
-            if (pos === -1) break;
-            found.push({ from: pos, to: pos + searchTerm.length });
-            idx = pos + 1;
+        // Scroll to first match
+        if (count > 0) {
+            scrollToMatch(editor, searchTerm, 0);
         }
-
-        setMatches(found);
-        setCurrentIndex(found.length > 0 ? 0 : -1);
-
-        // Highlight matches in the DOM
-        highlightMatches(found, 0);
     }, [searchTerm, editor]);
 
-    function clearHighlights() {
-        if (!editor) return;
-        const el = editor.view.dom;
-        el.querySelectorAll('.find-highlight, .find-highlight-active').forEach(mark => {
-            const parent = mark.parentNode;
-            parent.replaceChild(document.createTextNode(mark.textContent), mark);
-            parent.normalize();
-        });
-    }
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (editor) clearSearchHighlight(editor);
+        };
+    }, [editor]);
 
-    function highlightMatches(foundMatches, activeIdx) {
-        clearHighlights();
-        if (!editor || foundMatches.length === 0) return;
-
-        const fullText = editor.getText();
-        const el = editor.view.dom;
-        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
-        const textNodes = [];
-        let node;
-        while ((node = walker.nextNode())) {
-            textNodes.push(node);
-        }
-
-        // Build a flat text → text-node mapping
-        let charOffset = 0;
-        const nodeMap = [];
-        for (const tn of textNodes) {
-            nodeMap.push({ node: tn, start: charOffset, end: charOffset + tn.textContent.length });
-            charOffset += tn.textContent.length;
-        }
-
-        // Apply highlights in reverse order to not mess up offsets
-        const sortedMatches = [...foundMatches].map((m, i) => ({ ...m, idx: i })).reverse();
-
-        for (const match of sortedMatches) {
-            const { from, to, idx: matchIdx } = match;
-
-            // Find text nodes that contain this match
-            for (const nm of nodeMap) {
-                if (nm.end <= from || nm.start >= to) continue;
-
-                const localFrom = Math.max(0, from - nm.start);
-                const localTo = Math.min(nm.node.textContent.length, to - nm.start);
-                const text = nm.node.textContent;
-
-                const before = text.substring(0, localFrom);
-                const matched = text.substring(localFrom, localTo);
-                const after = text.substring(localTo);
-
-                const mark = document.createElement('mark');
-                mark.className = matchIdx === activeIdx ? 'find-highlight-active' : 'find-highlight';
-                mark.textContent = matched;
-
-                const parent = nm.node.parentNode;
-                const frag = document.createDocumentFragment();
-                if (before) frag.appendChild(document.createTextNode(before));
-                frag.appendChild(mark);
-                if (after) frag.appendChild(document.createTextNode(after));
-                parent.replaceChild(frag, nm.node);
-
-                // Scroll active match into view
-                if (matchIdx === activeIdx) {
-                    mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    function scrollToMatch(ed, term, idx) {
+        const pos = getMatchPosition(ed, term, idx);
+        if (!pos) return;
+        // Use the editor's scrollIntoView via a temporary selection
+        try {
+            const domAtPos = ed.view.domAtPos(pos.from);
+            if (domAtPos && domAtPos.node) {
+                const el = domAtPos.node.nodeType === Node.TEXT_NODE ? domAtPos.node.parentElement : domAtPos.node;
+                if (el && el.scrollIntoView) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
-                break; // Only handle first text node per match for simplicity
             }
+        } catch (e) {
+            // Ignore scroll errors silently
         }
     }
 
     function goNext() {
-        if (matches.length === 0) return;
-        const next = (currentIndex + 1) % matches.length;
+        if (matchCount === 0) return;
+        const next = (currentIndex + 1) % matchCount;
         setCurrentIndex(next);
-        highlightMatches(matches, next);
+        setSearchHighlight(editor, searchTerm, next);
+        scrollToMatch(editor, searchTerm, next);
     }
 
     function goPrev() {
-        if (matches.length === 0) return;
-        const prev = (currentIndex - 1 + matches.length) % matches.length;
+        if (matchCount === 0) return;
+        const prev = (currentIndex - 1 + matchCount) % matchCount;
         setCurrentIndex(prev);
-        highlightMatches(matches, prev);
+        setSearchHighlight(editor, searchTerm, prev);
+        scrollToMatch(editor, searchTerm, prev);
     }
 
     function replaceOne() {
-        if (!editor || matches.length === 0 || currentIndex < 0) return;
+        if (!editor || matchCount === 0 || currentIndex < 0) return;
 
-        clearHighlights();
-
-        const match = matches[currentIndex];
-        const fullText = editor.getText();
-
-        // Find the ProseMirror position by counting characters
-        let pmFrom = 0;
-        let charCount = 0;
-        const doc = editor.state.doc;
-
-        doc.descendants((node, pos) => {
-            if (node.isText) {
-                const nodeStart = charCount;
-                const nodeEnd = charCount + node.text.length;
-                if (match.from >= nodeStart && match.from < nodeEnd) {
-                    pmFrom = pos + (match.from - nodeStart);
-                }
-                charCount += node.text.length;
-            }
-        });
-
-        const pmTo = pmFrom + searchTerm.length;
+        const pos = getMatchPosition(editor, searchTerm, currentIndex);
+        if (!pos) return;
 
         editor
             .chain()
             .focus()
-            .setTextSelection({ from: pmFrom, to: pmTo })
+            .setTextSelection({ from: pos.from, to: pos.to })
             .deleteSelection()
             .insertContent(replaceTerm)
             .run();
 
         // Re-search after replace
         setTimeout(() => {
-            setSearchTerm(st => {
-                // Force re-search by toggling
-                return st;
-            });
-            // Manually re-find
-            const text = editor.getText();
-            const query = searchTerm.toLowerCase();
-            const found = [];
-            let idx = 0;
-            while (true) {
-                const pos = text.toLowerCase().indexOf(query, idx);
-                if (pos === -1) break;
-                found.push({ from: pos, to: pos + searchTerm.length });
-                idx = pos + 1;
+            const count = setSearchHighlight(editor, searchTerm, Math.min(currentIndex, matchCount - 2));
+            setMatchCount(count);
+            const newIdx = count > 0 ? Math.min(currentIndex, count - 1) : -1;
+            setCurrentIndex(newIdx);
+            if (count > 0 && newIdx >= 0) {
+                setSearchHighlight(editor, searchTerm, newIdx);
             }
-            setMatches(found);
-            const newIdx = Math.min(currentIndex, found.length - 1);
-            setCurrentIndex(newIdx >= 0 ? newIdx : 0);
-            highlightMatches(found, newIdx >= 0 ? newIdx : 0);
         }, 50);
     }
 
     function replaceAll() {
-        if (!editor || matches.length === 0) return;
+        if (!editor || matchCount === 0) return;
 
-        clearHighlights();
-
-        // Get current HTML content, replace all occurrences
+        // Get current HTML content, replace all occurrences in text (not in tags)
         const html = editor.getHTML();
-        // Use a regex to replace text content (not HTML tags)
         const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const regex = new RegExp(`(?<=^|>)([^<]*?)${escaped}`, 'gi');
-
-        // Simple approach: replace in the plain text by rebuilding
-        let newHtml = html;
-        // Replace all occurrences case-insensitively
-        const parts = [];
-        let lastIdx = 0;
-        const lowerHtml = html.toLowerCase();
-        const lowerSearch = searchTerm.toLowerCase();
 
         // Walk through HTML carefully, only replacing text outside tags
-        let inTag = false;
+        const parts = [];
         let textStart = -1;
 
         for (let i = 0; i <= html.length; i++) {
             if (i < html.length && html[i] === '<') {
                 if (textStart >= 0) {
-                    // Process text segment
                     const segment = html.substring(textStart, i);
                     parts.push(segment.replace(new RegExp(escaped, 'gi'), replaceTerm));
                     textStart = -1;
                 }
-                inTag = true;
                 const tagEnd = html.indexOf('>', i);
                 if (tagEnd >= 0) {
                     parts.push(html.substring(i, tagEnd + 1));
                     i = tagEnd;
                 }
-                inTag = false;
-            } else if (!inTag) {
+            } else {
                 if (textStart < 0) textStart = i;
             }
         }
@@ -228,15 +132,16 @@ export default function FindReplaceBar({ editor, onClose }) {
             parts.push(html.substring(textStart).replace(new RegExp(escaped, 'gi'), replaceTerm));
         }
 
-        newHtml = parts.join('');
+        const newHtml = parts.join('');
         editor.commands.setContent(newHtml);
-        setMatches([]);
+        clearSearchHighlight(editor);
+        setMatchCount(0);
         setCurrentIndex(0);
     }
 
     function handleKeyDown(e) {
         if (e.key === 'Escape') {
-            clearHighlights();
+            clearSearchHighlight(editor);
             onClose();
         } else if (e.key === 'Enter') {
             if (e.shiftKey) goPrev();
@@ -257,18 +162,18 @@ export default function FindReplaceBar({ editor, onClose }) {
                     onChange={e => setSearchTerm(e.target.value)}
                 />
                 <span className="find-count">
-                    {matches.length > 0 ? `${currentIndex + 1}/${matches.length}` : searchTerm ? '0' : ''}
+                    {matchCount > 0 ? `${currentIndex + 1}/${matchCount}` : searchTerm ? '0' : ''}
                 </span>
-                <button className="find-btn" onClick={goPrev} title="Anterior (Shift+Enter)" disabled={matches.length === 0}>
+                <button className="find-btn" onClick={goPrev} title="Anterior (Shift+Enter)" disabled={matchCount === 0}>
                     <ChevronUp size={14} />
                 </button>
-                <button className="find-btn" onClick={goNext} title="Siguiente (Enter)" disabled={matches.length === 0}>
+                <button className="find-btn" onClick={goNext} title="Siguiente (Enter)" disabled={matchCount === 0}>
                     <ChevronDown size={14} />
                 </button>
                 <button className="find-btn" onClick={() => setShowReplace(!showReplace)} title="Reemplazar">
                     <Replace size={14} />
                 </button>
-                <button className="find-btn" onClick={() => { clearHighlights(); onClose(); }} title="Cerrar (Esc)">
+                <button className="find-btn" onClick={() => { clearSearchHighlight(editor); onClose(); }} title="Cerrar (Esc)">
                     <X size={14} />
                 </button>
             </div>
@@ -282,10 +187,10 @@ export default function FindReplaceBar({ editor, onClose }) {
                         value={replaceTerm}
                         onChange={e => setReplaceTerm(e.target.value)}
                     />
-                    <button className="find-btn replace-btn" onClick={replaceOne} disabled={matches.length === 0} title="Reemplazar">
+                    <button className="find-btn replace-btn" onClick={replaceOne} disabled={matchCount === 0} title="Reemplazar">
                         Uno
                     </button>
-                    <button className="find-btn replace-btn" onClick={replaceAll} disabled={matches.length === 0} title="Reemplazar todos">
+                    <button className="find-btn replace-btn" onClick={replaceAll} disabled={matchCount === 0} title="Reemplazar todos">
                         Todos
                     </button>
                 </div>
