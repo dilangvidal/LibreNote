@@ -135,17 +135,44 @@ function TableNodeView({ node, getPos, editor, updateAttributes }) {
         document.addEventListener('mouseup', onMouseUp);
     }
 
+    // Insert a paragraph before or after the table
+    function handleGapClick(position) {
+        if (!editor) return;
+        const pos = getPos();
+        const { state, dispatch } = editor.view;
+        const paragraph = state.schema.nodes.paragraph.create();
+
+        let insertPos;
+        if (position === 'before') {
+            insertPos = pos;
+        } else {
+            insertPos = pos + node.nodeSize;
+        }
+
+        const tr = state.tr.insert(insertPos, paragraph);
+        // Place cursor in the new paragraph
+        const cursorPos = insertPos + 1;
+        tr.setSelection(state.selection.constructor.near(tr.doc.resolve(cursorPos)));
+        dispatch(tr);
+        editor.view.focus();
+    }
+
     return (
         <NodeViewWrapper>
+            {/* Clickable gap above the table */}
+            <div
+                className="table-gap-zone table-gap-before"
+                contentEditable={false}
+                onClick={() => handleGapClick('before')}
+            />
             <div
                 ref={wrapperRef}
                 className={`table-node-wrapper${isDragging ? ' is-dragging' : ''}`}
-                contentEditable={false}
-                style={{ userSelect: 'none' }}
             >
                 {/* Drag handle */}
                 <div
                     className="table-drag-handle"
+                    contentEditable={false}
                     onMouseDown={onDragHandleMouseDown}
                     title="Arrastrar tabla"
                 >
@@ -153,17 +180,22 @@ function TableNodeView({ node, getPos, editor, updateAttributes }) {
                 </div>
 
                 {/* The actual table content — editable */}
-                <div contentEditable={true} suppressContentEditableWarning style={{ display: 'contents' }}>
-                    <NodeViewContent as="table" />
-                </div>
+                <NodeViewContent as="table" />
 
                 {/* Resize handle */}
                 <div
                     className="table-resize-handle"
+                    contentEditable={false}
                     onMouseDown={onResizeMouseDown}
                     title="Redimensionar tabla"
                 />
             </div>
+            {/* Clickable gap below the table */}
+            <div
+                className="table-gap-zone table-gap-after"
+                contentEditable={false}
+                onClick={() => handleGapClick('after')}
+            />
         </NodeViewWrapper>
     );
 }

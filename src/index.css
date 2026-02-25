@@ -2588,8 +2588,34 @@ body {
     position: relative;
     display: inline-block;
     max-width: 100%;
-    margin: 16px 0;
     cursor: default;
+}
+
+/* Clickable gap zones above/below table */
+.table-gap-zone {
+    height: 16px;
+    cursor: text;
+    position: relative;
+    user-select: none;
+}
+
+.table-gap-zone:hover::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--onenote-purple);
+    opacity: 0.4;
+    border-radius: 1px;
+}
+
+.table-gap-before:hover::after {
+    bottom: 0;
+}
+
+.table-gap-after:hover::after {
+    top: 0;
 }
 
 /* Drag handle top-left */
