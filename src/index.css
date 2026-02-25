@@ -2877,3 +2877,582 @@ body {
     opacity: 0.6;
     cursor: not-allowed;
 }
+
+/* ══ FILE ATTACHMENT CARD ══ */
+.file-attachment-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 420px;
+    max-width: 100%;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border-default);
+    background: var(--bg-editor);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+    margin: 8px 0;
+    position: relative;
+    transition: box-shadow 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+    animation: fileCardFadeIn 0.18s ease-out;
+    user-select: none;
+}
+
+@keyframes fileCardFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.file-attachment-success {
+    cursor: pointer;
+}
+
+.file-attachment-success.hovered {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.06);
+    border-color: #4A8FDD;
+    transform: translateY(-1px);
+}
+
+.file-attachment-uploading {
+    background: var(--bg-sidebar);
+    border-style: dashed;
+    cursor: default;
+}
+
+.file-attachment-error {
+    background: rgba(229, 57, 53, 0.04);
+    border-color: rgba(229, 57, 53, 0.3);
+    cursor: default;
+}
+
+/* Icon area */
+.file-attachment-icon-area {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--file-color, #9E9E9E) 12%, transparent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--file-color, #9E9E9E);
+}
+
+.file-attachment-icon-error {
+    background: rgba(229, 57, 53, 0.1) !important;
+    color: #E53935 !important;
+}
+
+.file-attachment-spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Info area */
+.file-attachment-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.file-attachment-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+}
+
+.file-attachment-meta {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-top: 2px;
+}
+
+.file-attachment-error-text {
+    color: #E53935;
+    font-weight: 500;
+}
+
+/* Progress bar */
+.file-attachment-progress-track {
+    width: 100%;
+    height: 4px;
+    background: var(--border-default);
+    border-radius: 2px;
+    margin-top: 8px;
+    overflow: hidden;
+}
+
+.file-attachment-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #7719AA, #4285F4);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+.file-attachment-progress-indeterminate {
+    width: 40%;
+    animation: progressIndeterminate 1.4s ease-in-out infinite;
+}
+
+@keyframes progressIndeterminate {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    50% {
+        transform: translateX(150%);
+    }
+
+    100% {
+        transform: translateX(-100%);
+    }
+}
+
+/* Retry button */
+.file-attachment-retry-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 1px solid rgba(229, 57, 53, 0.3);
+    border-radius: 8px;
+    background: rgba(229, 57, 53, 0.06);
+    color: #E53935;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.file-attachment-retry-btn:hover {
+    background: rgba(229, 57, 53, 0.12);
+    border-color: #E53935;
+}
+
+/* Local badge */
+.file-attachment-local-badge {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    font-size: 10px;
+    color: #107C10;
+    background: rgba(16, 124, 16, 0.08);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+/* Context menu */
+.file-attachment-context-menu {
+    position: fixed;
+    background: var(--bg-editor);
+    border: 1px solid var(--border-default);
+    border-radius: 10px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+    z-index: 10000;
+    min-width: 220px;
+    padding: 5px;
+    animation: slideUp 0.12s ease;
+}
+
+.file-attachment-ctx-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--text-primary);
+    border-radius: 6px;
+    transition: background var(--transition-fast);
+    width: 100%;
+    text-align: left;
+}
+
+.file-attachment-ctx-item:hover {
+    background: var(--bg-hover);
+}
+
+.file-attachment-ctx-item svg {
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.file-attachment-ctx-danger {
+    color: #D13438;
+}
+
+.file-attachment-ctx-danger svg {
+    color: #D13438;
+}
+
+.file-attachment-ctx-danger:hover {
+    background: rgba(209, 52, 56, 0.08);
+}
+
+.file-attachment-ctx-divider {
+    height: 1px;
+    background: var(--border-default);
+    margin: 4px 8px;
+}
+
+/* ══ FILE DROP OVERLAY ══ */
+.file-drop-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(74, 143, 221, 0.06);
+    border: 2px dashed #4A8FDD;
+    border-radius: 12px;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    pointer-events: none;
+    animation: dropZoneFadeIn 0.15s ease;
+    box-shadow: inset 0 0 40px rgba(74, 143, 221, 0.08);
+}
+
+@keyframes dropZoneFadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.file-drop-label {
+    font-size: 16px;
+    font-weight: 600;
+    color: #4A8FDD;
+}
+
+.file-drop-sublabel {
+    font-size: 12px;
+    color: var(--text-tertiary);
+}
+
+/* ══ UPLOAD PROGRESS BAR (floating) ══ */
+.upload-progress-float {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 150;
+    background: var(--bg-editor);
+    border-bottom: 1px solid var(--border-default);
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    animation: slideDown 0.15s ease;
+}
+
+.upload-progress-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.upload-progress-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.upload-progress-track {
+    width: 100%;
+    height: 3px;
+    background: var(--border-default);
+    border-radius: 2px;
+    margin-top: 4px;
+    overflow: hidden;
+}
+
+.upload-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #7719AA, #4285F4);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+.upload-progress-cancel {
+    border: none;
+    background: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+}
+
+.upload-progress-cancel:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+/* ══ Dark mode — File Attachment ══ */
+[data-theme="dark"] .file-attachment-card {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .file-attachment-success.hovered {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .file-attachment-error {
+    background: rgba(229, 57, 53, 0.08);
+}
+
+[data-theme="dark"] .file-attachment-context-menu {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .file-drop-overlay {
+    background: rgba(74, 143, 221, 0.1);
+    box-shadow: inset 0 0 40px rgba(74, 143, 221, 0.12);
+}
+
+/* ══ FILE ATTACHMENT — Drag Handle ══ */
+.file-attachment-drag-handle {
+    position: absolute;
+    left: -20px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-tertiary);
+    opacity: 0;
+    cursor: grab;
+    border-radius: 4px;
+    transition: opacity 0.15s, background 0.12s;
+}
+
+.file-attachment-card:hover .file-attachment-drag-handle {
+    opacity: 1;
+}
+
+.file-attachment-drag-handle:hover {
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+}
+
+.file-attachment-drag-handle:active {
+    cursor: grabbing;
+}
+
+/* ══ FILE ATTACHMENT — Sync Button ══ */
+.file-attachment-sync-btn {
+    position: absolute;
+    top: 8px;
+    right: 32px;
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--border-default);
+    border-radius: 6px;
+    background: var(--bg-editor);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.file-attachment-sync-btn:hover {
+    background: var(--bg-hover);
+    border-color: #4285F4;
+    color: #4285F4;
+}
+
+/* ══ FILE ATTACHMENT — Gemini context ══ */
+.file-attachment-ctx-gemini {
+    color: #7719AA;
+}
+
+.file-attachment-ctx-gemini svg {
+    color: #7719AA !important;
+}
+
+.file-attachment-ctx-gemini:hover {
+    background: rgba(119, 25, 170, 0.08);
+}
+
+/* ══ FILE ATTACHMENT — Delete Modal ══ */
+.file-attachment-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+    animation: fadeIn 0.12s ease;
+}
+
+.file-attachment-delete-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--bg-editor);
+    border-radius: 14px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
+    padding: 28px 32px 24px;
+    z-index: 1001;
+    width: 380px;
+    max-width: 90vw;
+    animation: scaleIn 0.15s ease;
+    text-align: center;
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.94);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.file-attachment-modal-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(229, 57, 53, 0.08);
+    color: #E53935;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 14px;
+}
+
+.file-attachment-modal-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.file-attachment-modal-text {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 16px;
+}
+
+.file-attachment-modal-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-primary);
+    cursor: pointer;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+.file-attachment-modal-check input[type="checkbox"] {
+    accent-color: #E53935;
+    width: 16px;
+    height: 16px;
+}
+
+.file-attachment-modal-warn {
+    font-size: 12px;
+    color: #E53935;
+    background: rgba(229, 57, 53, 0.06);
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    font-weight: 500;
+}
+
+.file-attachment-modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 16px;
+}
+
+.file-attachment-modal-btn {
+    padding: 8px 24px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    border: 1px solid var(--border-default);
+    transition: all 0.12s;
+}
+
+.file-attachment-modal-cancel {
+    background: var(--bg-editor);
+    color: var(--text-primary);
+}
+
+.file-attachment-modal-cancel:hover {
+    background: var(--bg-hover);
+}
+
+.file-attachment-modal-confirm {
+    background: #E53935;
+    color: white;
+    border-color: #E53935;
+}
+
+.file-attachment-modal-confirm:hover {
+    background: #C62828;
+}
+
+/* Dark mode modal */
+[data-theme="dark"] .file-attachment-delete-modal {
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .file-attachment-modal-overlay {
+    background: rgba(0, 0, 0, 0.6);
+}

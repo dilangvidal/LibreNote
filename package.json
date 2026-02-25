@@ -1,11 +1,13 @@
 {
   "name": "librenote",
-  "version": "3.4.0",
-  "description": "A OneNote-like note-taking app for Mac with Google Drive sync",
+  "version": "3.5.0",
+  "description": "A OneNote-like note-taking app with Google Drive sync and Gemini AI",
   "main": "electron/main.js",
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "vite build && electron-builder",
+    "build:win": "vite build && electron-builder --win",
+    "build:mac": "vite build && electron-builder --mac",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -44,6 +46,9 @@
     "appId": "com.librenote.app",
     "productName": "LibreNote",
     "forceCodeSigning": false,
+    "directories": {
+      "output": "release"
+    },
     "mac": {
       "icon": "build/icon.icns",
       "identity": null,
@@ -71,10 +76,15 @@
       ]
     },
     "nsis": {
-      "oneClick": true,
-      "allowToChangeInstallationDirectory": false,
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "shortcutName": "LibreNote",
+      "installerIcon": "build/icon.png",
+      "uninstallerIcon": "build/icon.png",
+      "installerHeaderIcon": "build/icon.png"
     },
     "files": [
       "dist/**/*",

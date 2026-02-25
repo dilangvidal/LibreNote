@@ -34,6 +34,7 @@ const browserStorage = {
     gdriveGetFileUrl: async () => ({ success: false }),
     gdriveUploadFile: async () => ({ success: false }),
     gdriveDownloadFile: async () => ({ success: false }),
+    gdriveDeleteFile: async () => ({ success: false }),
 
     // Config
     getGeminiKey: async () => localStorage.getItem('librenote-gemini-key') || '',
@@ -57,6 +58,7 @@ const browserStorage = {
     pickImage: async () => null,
     pickFile: async () => null,
     openLocalFile: async () => false,
+    readFileText: async () => null,
 
     // Export
     exportPdf: async (htmlContent, suggestedName) => {

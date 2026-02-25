@@ -88,27 +88,96 @@ export default function RibbonBar({ editor, onOpenDriveSearch, onOpenExportPdf, 
     }
 
     async function handleFileAttach() {
+        if (!editor) return;
+
+        const getMime = (name) => {
+            const ext = (name || '').split('.').pop()?.toLowerCase();
+            const map = {
+                pdf: 'application/pdf', doc: 'application/msword',
+                docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                xls: 'application/vnd.ms-excel', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                ppt: 'application/vnd.ms-powerpoint', pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                txt: 'text/plain', csv: 'text/csv', zip: 'application/zip',
+                png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+                mp4: 'video/mp4', mp3: 'audio/mpeg',
+            };
+            return map[ext] || 'application/octet-stream';
+        };
+
         if (typeof window !== 'undefined' && window.librenote?.pickFile) {
             const result = await window.librenote.pickFile('All Files');
-            if (result) {
-                if (gdriveConnected && api?.gdriveUploadFile) {
+            if (!result) return;
+
+            const uploadId = `upload_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+            const mimeType = getMime(result.name);
+
+            // Insert card in uploading state
+            editor.chain().focus().insertContent({
+                type: 'fileAttachment',
+                attrs: {
+                    fileName: result.name,
+                    fileSize: result.size || 0,
+                    mimeType,
+                    localPath: result.path || '',
+                    status: gdriveConnected ? 'uploading' : 'success',
+                    uploadProgress: 0,
+                    uploadId,
+                },
+            }).run();
+
+            // Upload to Drive if connected
+            if (gdriveConnected && api?.gdriveUploadFile) {
+                try {
                     const uploadResult = await api.gdriveUploadFile(result.path, result.name);
-                    if (uploadResult?.success && uploadResult.file?.webViewLink) {
-                        editor.chain().focus().insertContent(`<p><a href="${uploadResult.file.webViewLink}" target="_blank">${result.name}</a></p>`).run();
-                    } else {
-                        editor.chain().focus().insertContent(`<p><strong>[Archivo adjunto]</strong> ${result.name}</p>`).run();
-                    }
-                } else {
-                    editor.chain().focus().insertContent(`<p><strong>[Archivo adjunto]</strong> ${result.name}</p>`).run();
+                    // Find and update the node
+                    const { state } = editor;
+                    let found = false;
+                    state.doc.descendants((node, pos) => {
+                        if (found) return false;
+                        if (node.type.name === 'fileAttachment' && node.attrs.uploadId === uploadId) {
+                            const tr = state.tr;
+                            if (uploadResult?.success && uploadResult.file) {
+                                tr.setNodeAttribute(pos, 'status', 'success');
+                                tr.setNodeAttribute(pos, 'driveId', uploadResult.file.id || '');
+                                tr.setNodeAttribute(pos, 'driveUrl', uploadResult.file.webViewLink || '');
+                                tr.setNodeAttribute(pos, 'uploadProgress', 100);
+                            } else {
+                                tr.setNodeAttribute(pos, 'status', 'error');
+                            }
+                            editor.view.dispatch(tr);
+                            found = true;
+                            return false;
+                        }
+                    });
+                } catch (err) {
+                    console.error('[RibbonBar] Upload error:', err);
+                    const { state } = editor;
+                    state.doc.descendants((node, pos) => {
+                        if (node.type.name === 'fileAttachment' && node.attrs.uploadId === uploadId) {
+                            const tr = state.tr;
+                            tr.setNodeAttribute(pos, 'status', 'error');
+                            editor.view.dispatch(tr);
+                            return false;
+                        }
+                    });
                 }
             }
         } else {
+            // Browser fallback: insert card without upload
             const input = document.createElement('input');
             input.type = 'file';
             input.onchange = (e) => {
                 const file = e.target.files[0];
                 if (file) {
-                    editor.chain().focus().insertContent(`<p><strong>[Archivo adjunto]</strong> ${file.name} (${(file.size / 1024).toFixed(1)} KB)</p>`).run();
+                    editor.chain().focus().insertContent({
+                        type: 'fileAttachment',
+                        attrs: {
+                            fileName: file.name,
+                            fileSize: file.size,
+                            mimeType: file.type || getMime(file.name),
+                            status: 'success',
+                        },
+                    }).run();
                 }
             };
             input.click();

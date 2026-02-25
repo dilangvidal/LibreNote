@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Sparkles, Send, X, Copy, Plus, Loader2, AlertCircle } from 'lucide-react';
 import api from '../services/api.js';
 
-export default function GeminiPanel({ editor, onClose, onInsert }) {
+export default function GeminiPanel({ editor, onClose, onInsert, fileContext }) {
     const [prompt, setPrompt] = useState('');
     const [response, setResponse] = useState('');
     const [loading, setLoading] = useState(false);
@@ -12,7 +12,11 @@ export default function GeminiPanel({ editor, onClose, onInsert }) {
 
     useEffect(() => {
         if (inputRef.current) inputRef.current.focus();
-    }, []);
+        // If there's a file context, auto-set a prompt
+        if (fileContext?.fileName) {
+            setPrompt(`Analiza el archivo "${fileContext.fileName}" y proporciona un resumen detallado de su contenido.`);
+        }
+    }, [fileContext]);
 
     async function handleSend() {
         if (!prompt.trim() || loading) return;
@@ -27,8 +31,13 @@ export default function GeminiPanel({ editor, onClose, onInsert }) {
             ? editor.state.doc.textBetween(from, to, ' ')
             : '';
 
+        // Append file context if available
+        const fullContext = fileContext?.context
+            ? `${pageContext}\n\n--- Archivo adjunto ---\n${fileContext.context}`
+            : pageContext;
+
         try {
-            const result = await api.geminiChat(prompt, pageContext, selectedText);
+            const result = await api.geminiChat(prompt, fullContext, selectedText);
             if (result.success) {
                 setResponse(result.text);
                 if (result.model) setModelUsed(result.model);

@@ -16,7 +16,8 @@ import TableCell from '@tiptap/extension-table-cell';
 import MarkdownInputRules from '../extensions/MarkdownInputRules.js';
 import MarkdownTablePlugin from '../extensions/MarkdownTablePlugin.js';
 import SearchHighlight from '../extensions/SearchHighlight.js';
-import { FileText, Check, RefreshCw, Download, ExternalLink, X, Loader2, Clipboard, RemoveFormatting, FileType, Scissors, Copy, Sparkles } from 'lucide-react';
+import FileAttachment from '../extensions/FileAttachment.js';
+import { FileText, Check, RefreshCw, Download, ExternalLink, X, Loader2, Clipboard, RemoveFormatting, FileType, Scissors, Copy, Sparkles, Upload } from 'lucide-react';
 import { formatDate } from '../utils/helpers';
 import FindReplaceBar from './FindReplaceBar.jsx';
 import GeminiPanel from './GeminiPanel.jsx';
@@ -28,6 +29,10 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
     const [contextMenu, setContextMenu] = useState(null);
     const [showFindReplace, setShowFindReplace] = useState(false);
     const [showGemini, setShowGemini] = useState(false);
+    const [geminiFileContext, setGeminiFileContext] = useState(null);
+    const [fileDragOver, setFileDragOver] = useState(false);
+    const [dragFileInfo, setDragFileInfo] = useState(null);
+    const dragCounterRef = useRef(0);
     const popupRef = useRef(null);
     const pastePopupRef = useRef(null);
     const contextMenuRef = useRef(null);
@@ -43,6 +48,19 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
         };
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
+    // Listen for Gemini file context events from FileAttachmentCard
+    useEffect(() => {
+        const handleGeminiOpen = (e) => {
+            const { fileContext, fileName } = e.detail || {};
+            if (fileContext) {
+                setGeminiFileContext({ context: fileContext, fileName });
+            }
+            setShowGemini(true);
+        };
+        window.addEventListener('librenote:open-gemini', handleGeminiOpen);
+        return () => window.removeEventListener('librenote:open-gemini', handleGeminiOpen);
     }, []);
 
     const editor = useEditor({
@@ -63,6 +81,7 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
             MarkdownInputRules,
             MarkdownTablePlugin,
             SearchHighlight,
+            FileAttachment,
         ],
         content: page?.content || '',
         onUpdate: ({ editor }) => {
@@ -356,7 +375,6 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
     const handleWrapperClick = useCallback((e) => {
         if (!editor) return;
         if (e.target.closest('.ProseMirror')) return;
-        // NEW: do not act if click is near a table
         if (e.target.closest('.table-node-wrapper')) return;
 
         const wrapperRect = e.currentTarget.getBoundingClientRect();
@@ -370,9 +388,165 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
             const linesNeeded = Math.ceil((clickY - editorHeight) / lineHeight);
             let content = '';
             for (let i = 0; i < linesNeeded; i++) content += '<p></p>';
-            editor.chain().focus('end').insertContent(content).focus('end').run();
+            // Insert at the very end of the document without selecting/replacing last node
+            const endPos = editor.state.doc.content.size;
+            editor.chain().insertContentAt(endPos, content).focus('end').run();
         }
     }, [editor]);
+
+    // ── Drag & Drop file handlers ──
+    const getMimeType = useCallback((fileName) => {
+        const ext = (fileName || '').split('.').pop()?.toLowerCase();
+        const mimeMap = {
+            pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+            gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml',
+            doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            xls: 'application/vnd.ms-excel', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ppt: 'application/vnd.ms-powerpoint', pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            txt: 'text/plain', csv: 'text/csv', zip: 'application/zip',
+            mp4: 'video/mp4', mp3: 'audio/mpeg', wav: 'audio/wav',
+        };
+        return mimeMap[ext] || 'application/octet-stream';
+    }, []);
+
+    const handleFileDragEnter = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounterRef.current++;
+        if (e.dataTransfer?.types?.includes('Files')) {
+            setFileDragOver(true);
+            const items = e.dataTransfer.items;
+            if (items && items.length > 0) {
+                setDragFileInfo({ count: items.length });
+            }
+        }
+    }, []);
+
+    const handleFileDragLeave = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounterRef.current--;
+        if (dragCounterRef.current <= 0) {
+            dragCounterRef.current = 0;
+            setFileDragOver(false);
+            setDragFileInfo(null);
+        }
+    }, []);
+
+    const handleFileDragOver = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+    }, []);
+
+    const insertFileAttachment = useCallback(async (file, delay = 0) => {
+        if (!editor) return;
+        if (delay > 0) await new Promise(r => setTimeout(r, delay));
+
+        const mimeType = file.type || getMimeType(file.name);
+        const uploadId = `upload_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+        // Insert card in uploading state
+        editor.chain().focus().insertContent({
+            type: 'fileAttachment',
+            attrs: {
+                fileName: file.name,
+                fileSize: file.size || 0,
+                mimeType,
+                status: 'uploading',
+                uploadProgress: 0,
+                uploadId,
+            },
+        }).run();
+
+        // If in Electron with Drive connected, upload
+        if (window.librenote?.gdriveUploadFile && gdriveConnected) {
+            try {
+                // For drag & drop, we need to save the file to a temp location first
+                // since gdriveUploadFile expects a file path
+                let filePath = file.path; // Electron provides .path on dropped files
+                if (!filePath) {
+                    // Browser: can't upload without a path in Electron
+                    updateFileAttachmentByUploadId(uploadId, { status: 'error' });
+                    return;
+                }
+
+                const result = await window.librenote.gdriveUploadFile(filePath, file.name);
+                if (result?.success && result.file) {
+                    updateFileAttachmentByUploadId(uploadId, {
+                        status: 'success',
+                        driveId: result.file.id || '',
+                        driveUrl: result.file.webViewLink || '',
+                        localPath: filePath,
+                        uploadProgress: 100,
+                    });
+                } else {
+                    updateFileAttachmentByUploadId(uploadId, { status: 'error', localPath: filePath });
+                }
+            } catch (err) {
+                console.error('[FileAttachment] Upload error:', err);
+                updateFileAttachmentByUploadId(uploadId, { status: 'error' });
+            }
+        } else {
+            // No Drive: just show the card as success with local path only
+            updateFileAttachmentByUploadId(uploadId, {
+                status: 'success',
+                localPath: file.path || '',
+            });
+        }
+    }, [editor, gdriveConnected, getMimeType]);
+
+    // Find and update a fileAttachment node by its uploadId
+    const updateFileAttachmentByUploadId = useCallback((uploadId, newAttrs) => {
+        if (!editor) return;
+        const { state } = editor;
+        let found = false;
+        state.doc.descendants((node, pos) => {
+            if (found) return false;
+            if (node.type.name === 'fileAttachment' && node.attrs.uploadId === uploadId) {
+                const tr = state.tr;
+                Object.entries(newAttrs).forEach(([key, val]) => {
+                    tr.setNodeAttribute(pos, key, val);
+                });
+                editor.view.dispatch(tr);
+                found = true;
+                return false;
+            }
+        });
+    }, [editor]);
+
+    const handleFileDrop = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounterRef.current = 0;
+        setFileDragOver(false);
+        setDragFileInfo(null);
+
+        const files = Array.from(e.dataTransfer?.files || []);
+        if (files.length === 0) return;
+
+        // Filter out images (they're handled by DraggableImage)
+        const nonImageFiles = files.filter(f => !f.type?.startsWith('image/'));
+        const imageFiles = files.filter(f => f.type?.startsWith('image/'));
+
+        // Insert non-image files as attachment cards with staggered delay
+        nonImageFiles.forEach((file, i) => {
+            insertFileAttachment(file, i * 120);
+        });
+
+        // Let images be handled by the default TipTap behavior (if no non-image files)
+        // If there are both, insert images via DraggableImage
+        if (imageFiles.length > 0 && nonImageFiles.length > 0) {
+            imageFiles.forEach((imgFile, i) => {
+                setTimeout(() => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        editor?.chain().focus().setImage({ src: reader.result }).run();
+                    };
+                    reader.readAsDataURL(imgFile);
+                }, (nonImageFiles.length + i) * 120);
+            });
+        }
+    }, [editor, insertFileAttachment]);
 
     if (!page) {
         return (
@@ -401,16 +575,35 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
             {showFindReplace && editor && (
                 <FindReplaceBar editor={editor} onClose={() => setShowFindReplace(false)} />
             )}
-            <div className="editor-wrapper ruled" onClick={(e) => { handleEditorClick(e); handleWrapperClick(e); }} onContextMenu={(e) => {
-                e.preventDefault();
-                const wrapperEl = e.currentTarget;
-                const wrapperRect = wrapperEl.getBoundingClientRect();
-                setContextMenu({
-                    x: e.clientX - wrapperRect.left,
-                    y: e.clientY - wrapperRect.top + wrapperEl.scrollTop,
-                });
-            }} style={{ position: 'relative', cursor: 'text' }}>
+            <div className="editor-wrapper ruled"
+                onClick={(e) => { handleEditorClick(e); handleWrapperClick(e); }}
+                onContextMenu={(e) => {
+                    e.preventDefault();
+                    const wrapperEl = e.currentTarget;
+                    const wrapperRect = wrapperEl.getBoundingClientRect();
+                    setContextMenu({
+                        x: e.clientX - wrapperRect.left,
+                        y: e.clientY - wrapperRect.top + wrapperEl.scrollTop,
+                    });
+                }}
+                onDragEnter={handleFileDragEnter}
+                onDragLeave={handleFileDragLeave}
+                onDragOver={handleFileDragOver}
+                onDrop={handleFileDrop}
+                style={{ position: 'relative', cursor: 'text' }}
+            >
                 <EditorContent editor={editor} />
+
+                {/* File drop overlay */}
+                {fileDragOver && (
+                    <div className="file-drop-overlay">
+                        <Upload size={32} />
+                        <div className="file-drop-label">Soltar para adjuntar</div>
+                        <div className="file-drop-sublabel">
+                            {dragFileInfo?.count > 1 ? `${dragFileInfo.count} archivos` : 'Archivo'}
+                        </div>
+                    </div>
+                )}
 
                 {/* Drive link popup */}
                 {linkPopup && (
@@ -491,7 +684,11 @@ export default function EditorArea({ page, onTitleChange, onContentChange, onEdi
 
                 {/* Gemini AI Panel */}
                 {showGemini && editor && (
-                    <GeminiPanel editor={editor} onClose={() => setShowGemini(false)} />
+                    <GeminiPanel
+                        editor={editor}
+                        onClose={() => { setShowGemini(false); setGeminiFileContext(null); }}
+                        fileContext={geminiFileContext}
+                    />
                 )}
             </div>
         </div>

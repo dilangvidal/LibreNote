@@ -10,6 +10,9 @@ contextBridge.exposeInMainWorld('librenote', {
     pickFile: (accept) => ipcRenderer.invoke('file:pick', accept),
     pickImage: () => ipcRenderer.invoke('file:pick-image'),
     openLocalFile: (filePath) => ipcRenderer.invoke('file:open-local', filePath),
+    openExternal: (url) => ipcRenderer.invoke('file:open-external', url),
+    readFileText: (filePath) => ipcRenderer.invoke('file:read-text', filePath),
+    clearAllData: () => ipcRenderer.invoke('app:clear-all-data'),
 
     // Google Drive
     isGDriveAuthenticated: () => ipcRenderer.invoke('gdrive:is-authenticated'),
@@ -21,6 +24,7 @@ contextBridge.exposeInMainWorld('librenote', {
     gdriveSearchFiles: (query) => ipcRenderer.invoke('gdrive:search-files', query),
     gdriveGetFileUrl: (fileId) => ipcRenderer.invoke('gdrive:get-file-url', fileId),
     gdriveDownloadFile: (fileId, fileName) => ipcRenderer.invoke('gdrive:download-file', fileId, fileName),
+    gdriveDeleteFile: (fileId) => ipcRenderer.invoke('gdrive:delete-file', fileId),
 
     // Config
     getGeminiKey: () => ipcRenderer.invoke('config:get-gemini-key'),

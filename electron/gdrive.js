@@ -260,6 +260,11 @@ function driveRequest(method, pathStr, body, isUpload) {
                         .catch(reject);
                     return;
                 }
+                // DELETE returns 204 No Content
+                if (res.statusCode === 204 || !data.trim()) {
+                    resolve({ success: true });
+                    return;
+                }
                 try { resolve(JSON.parse(data)); }
                 catch { resolve(data); }
             });
@@ -287,8 +292,18 @@ async function findOrCreateFolder(name) {
 
 async function deleteDriveFile(fileId) {
     try {
-        await driveRequest('DELETE', `/drive/v3/files/${fileId}`);
-        return { success: true };
+        // Move to trash instead of permanent delete
+        const result = await driveRequest('PATCH', `/drive/v3/files/${fileId}`, { trashed: true });
+        // Validate it was actually trashed
+        if (result && result.trashed === true) {
+            return { success: true };
+        }
+        // If response doesn't include trashed field, verify by fetching the file
+        const check = await driveRequest('GET', `/drive/v3/files/${fileId}?fields=trashed`);
+        if (check && check.trashed === true) {
+            return { success: true };
+        }
+        return { success: false, error: 'No se pudo confirmar que el archivo fue enviado a la papelera' };
     } catch (err) {
         return { success: false, error: err.message };
     }

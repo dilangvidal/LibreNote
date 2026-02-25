@@ -39,10 +39,17 @@ export default function App() {
 
     function handleDriveFileInsert(file) {
         if (editorRef) {
-            const link = file.webViewLink || '#';
-            editorRef.chain().focus().insertContent(
-                `<p><a href="${link}" target="_blank" class="file-attachment">${file.name}</a></p>`
-            ).run();
+            editorRef.chain().focus().insertContent({
+                type: 'fileAttachment',
+                attrs: {
+                    fileName: file.name || 'Archivo',
+                    fileSize: file.size || 0,
+                    mimeType: file.mimeType || '',
+                    driveId: file.id || '',
+                    driveUrl: file.webViewLink || '',
+                    status: 'success',
+                },
+            }).run();
         }
         setShowDriveSearch(false);
     }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Cloud, CloudOff, Info, Loader, Sun, Moon, Monitor, Sparkles, Eye, EyeOff, Key } from 'lucide-react';
+import { Settings, Cloud, CloudOff, Info, Loader, Sun, Moon, Monitor, Sparkles, Eye, EyeOff, Key, LogOut } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext.jsx';
 
 export default function SettingsModal({ gdriveConnected, onConnect, onDisconnect, onClose }) {
@@ -91,6 +91,40 @@ export default function SettingsModal({ gdriveConnected, onConnect, onDisconnect
                                 </button>
                             )}
                         </div>
+
+                        {/* Cerrar sesión */}
+                        <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
+                            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6, color: '#E53935', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <LogOut size={14} /> Cerrar sesión
+                            </div>
+                            <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 10 }}>
+                                Desvincula Google Drive, borra todos los datos locales y reinicia la aplicación desde cero.
+                            </p>
+                            <button
+                                className="btn btn-danger"
+                                onClick={async () => {
+                                    if (confirm('¿Estás seguro? Esto desconectará Google Drive, eliminará todos los datos locales y reiniciará la aplicación.')) {
+                                        try {
+                                            if (gdriveConnected) await onDisconnect();
+                                            // Clear all local storage
+                                            localStorage.clear();
+                                            sessionStorage.clear();
+                                            // Clear Gemini key
+                                            if (window.librenote?.setGeminiKey) await window.librenote.setGeminiKey('');
+                                            // Clear notebooks from disk
+                                            if (window.librenote?.clearAllData) await window.librenote.clearAllData();
+                                            // Reload the app
+                                            window.location.reload();
+                                        } catch (e) {
+                                            console.error('[Settings] Logout error:', e);
+                                            window.location.reload();
+                                        }
+                                    }
+                                }}
+                            >
+                                <LogOut size={13} /> Cerrar sesión y borrar datos
+                            </button>
+                        </div>
                     </div>
                 )}
 
@@ -125,7 +159,7 @@ export default function SettingsModal({ gdriveConnected, onConnect, onDisconnect
                     <div style={{ textAlign: 'center', padding: 16 }}>
                         <div style={{ fontSize: 40, marginBottom: 8, color: 'var(--onenote-purple)' }}><Sparkles size={48} /></div>
                         <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--onenote-purple)', marginBottom: 4 }}>LibreNote</h3>
-                        <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12 }}>Versión 3.1.0</p>
+                        <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12 }}>Versión 3.5.0</p>
                         <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                             Aplicación de notas estilo OneNote para Mac, con editor de texto enriquecido, sincronización a Google Drive e integración con Gemini AI.
                         </p>

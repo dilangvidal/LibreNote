@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain, Menu, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { initGDrive, handleGDriveAuth, syncToGDrive, syncFromGDrive, isAuthenticated, logout, uploadFileToDrive, searchDriveFiles, getFileUrl, downloadDriveFile } = require('./gdrive');
+const { initGDrive, handleGDriveAuth, syncToGDrive, syncFromGDrive, isAuthenticated, logout, uploadFileToDrive, searchDriveFiles, getFileUrl, downloadDriveFile, deleteDriveFile } = require('./gdrive');
 
 const DATA_DIR = path.join(app.getPath('home'), 'LibreNoteData', 'notebooks');
 const CONFIG_DIR = path.join(app.getPath('home'), 'LibreNoteData');
@@ -40,16 +40,20 @@ function createWindow() {
 }
 
 function buildMenu() {
+    const isMac = process.platform === 'darwin';
+
     const template = [
-        {
+        // App menu (Mac only — on Windows, roles go elsewhere)
+        ...(isMac ? [{
             label: app.name,
             submenu: [
                 { role: 'about' },
                 { type: 'separator' },
                 { role: 'quit' },
             ],
-        },
-        {
+        }] : []),
+        // Edit menu — Mac only
+        ...(isMac ? [{
             label: 'Edit',
             submenu: [
                 { role: 'undo' },
@@ -60,8 +64,9 @@ function buildMenu() {
                 { role: 'paste' },
                 { role: 'selectAll' },
             ],
-        },
-        {
+        }] : []),
+        // View menu — Mac only
+        ...(isMac ? [{
             label: 'View',
             submenu: [
                 { role: 'reload' },
@@ -71,9 +76,15 @@ function buildMenu() {
                 { role: 'zoomOut' },
                 { role: 'resetZoom' },
             ],
-        },
+        }] : []),
     ];
-    Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+
+    // On Windows, set null menu to hide the menu bar entirely
+    if (!isMac && template.length === 0) {
+        Menu.setApplicationMenu(null);
+    } else {
+        Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+    }
 }
 
 // ── IPC: Local Storage ──
@@ -141,6 +152,16 @@ ipcMain.handle('file:open-local', async (_event, filePath) => {
     }
 });
 
+ipcMain.handle('file:open-external', async (_event, url) => {
+    try {
+        await shell.openExternal(url);
+        return true;
+    } catch (e) {
+        console.error('[File] Error opening external URL:', e);
+        return false;
+    }
+});
+
 // ── IPC: Google Drive ──
 ipcMain.handle('gdrive:is-authenticated', async () => {
     return isAuthenticated();
@@ -176,6 +197,49 @@ ipcMain.handle('gdrive:get-file-url', async (_event, fileId) => {
 
 ipcMain.handle('gdrive:download-file', async (_event, fileId, fileName) => {
     return await downloadDriveFile(fileId, fileName);
+});
+
+ipcMain.handle('gdrive:delete-file', async (_event, fileId) => {
+    return await deleteDriveFile(fileId);
+});
+
+// ── IPC: Read file text content ──
+ipcMain.handle('file:read-text', async (_event, filePath) => {
+    try {
+        const ext = path.extname(filePath).toLowerCase();
+        const textExts = ['.txt', '.csv', '.json', '.md', '.xml', '.html', '.htm', '.log', '.yaml', '.yml', '.ini', '.cfg', '.toml'];
+        if (!textExts.includes(ext)) return null;
+        const content = fs.readFileSync(filePath, 'utf-8');
+        // Limit to first 10000 chars for Gemini context
+        return content.length > 10000 ? content.substring(0, 10000) + '\n[...contenido truncado...]' : content;
+    } catch (e) {
+        console.error('[ReadFileText] Error:', e);
+        return null;
+    }
+});
+
+// ── IPC: Clear all local data (logout) ──
+ipcMain.handle('app:clear-all-data', async () => {
+    try {
+        // Delete notebooks
+        if (fs.existsSync(DATA_DIR)) {
+            fs.rmSync(DATA_DIR, { recursive: true, force: true });
+            fs.mkdirSync(DATA_DIR, { recursive: true });
+        }
+        // Delete config
+        if (fs.existsSync(CONFIG_FILE)) fs.unlinkSync(CONFIG_FILE);
+        // Delete gdrive token
+        const tokenPath = path.join(app.getPath('userData'), 'gdrive-token.json');
+        if (fs.existsSync(tokenPath)) fs.unlinkSync(tokenPath);
+        // Delete downloads
+        const downloadsDir = path.join(app.getPath('home'), 'LibreNoteData', 'downloads');
+        if (fs.existsSync(downloadsDir)) fs.rmSync(downloadsDir, { recursive: true, force: true });
+        console.log('[App] All local data cleared');
+        return { success: true };
+    } catch (e) {
+        console.error('[App] Error clearing data:', e);
+        return { success: false, error: e.message };
+    }
 });
 
 // ── IPC: Config (API keys) ──
